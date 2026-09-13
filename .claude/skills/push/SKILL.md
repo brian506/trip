@@ -52,7 +52,7 @@ git push -u origin <현재 브랜치>
 gh pr create --base main --title "<type>[#N]: <설명>" --body "<변경 요약>\n\n관련 이슈: #N"
 ```
 
-푸시할 브랜치를 체크아웃한 상태에서 푸시한다. `pre-push` 훅이 금지어 검사와 `./gradlew clean test`(단위)를 실행하고, 통합 테스트는 PR CI가 실행한다. 실패하면 원인을 고치고 다시 커밋한다.
+푸시 훅은 없다. 금지어는 커밋 훅이, 단위·통합 테스트는 PR CI가 검사한다. CI가 실패하면 원인을 고치고 다시 커밋·푸시한다.
 `--no-verify`, `--force`는 쓰지 않는다.
 
 ## Step 5: 보고

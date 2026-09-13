@@ -19,8 +19,7 @@ argument-hint: "[commit | issue | journal] [설명]"
 | 경로 | 검사 |
 |------|------|
 | 커밋 | `pre-commit`: 원본 문서, 경로·추가 줄 금지어 / `commit-msg`: 형식, 자동 종료 키워드, 금지어 |
-| 푸시 | `pre-push`: 금지어, `clean test`(단위). 푸시할 브랜치를 체크아웃해야 한다 |
-| PR | CI: 단위·통합 테스트 |
+| PR | CI: 단위·통합 테스트. 통과해야 머지할 수 있고, 문서만 바뀐 PR은 테스트를 건너뛴다 |
 | Claude의 `gh issue·pr create·edit·comment` | `.claude/hooks/check-gh-text.sh`가 실행 전 차단 |
 | 웹에서 쓴 이슈·PR·댓글 | `sh scripts/audit-github-text.sh`로 사후 점검. 제출 전 필수 |
 
@@ -37,7 +36,7 @@ argument-hint: "[commit | issue | journal] [설명]"
 
 - 작업 환경 파일 외의 변경은 이슈별 브랜치 `<type>/<이슈번호>`에서 작업한다. 예: `feature/5`
 - PR 제목은 `<type>[#<이슈번호>]: <한글 설명>`, 본문은 변경 요약과 `관련 이슈: #N`. 자동 종료 키워드는 쓰지 않는다.
-- 머지는 Merge commit(`gh pr merge --merge`)으로 하고, 사용자가 요청할 때만 한다.
+- 머지는 Merge commit(`gh pr merge --merge`)으로 하고, 사용자가 요청할 때만 한다. CI `test`가 통과한 PR만 머지하고 `--admin`으로 우회하지 않는다.
 
 ## issue
 
