@@ -66,6 +66,7 @@ gh issue view <N>
 - 기댓값은 문장과 Step 2 스펙에서 가져온다.
 - 문장만으로 입력값이나 기댓값을 정할 수 없으면 구현을 열어보지 말고 사용자에게 묻는다.
 - 작성 중 `references/test-antipatterns.md`를 참고한다.
+- 테스트 종류별 위치, 단위·통합 방식, 형식은 `references/test-conventions.md`를 따른다.
 
 ## Step 6: 실행
 

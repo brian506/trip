@@ -24,7 +24,7 @@
 | 푸시 전 검증 | 구현 `review`, 테스트 `test-review` 리뷰 게이트. pre-push 훅은 두지 않는다 |
 | 머지 조건 | `main` 대상 PR은 CI `test` 통과 필수(branch protection). 문서(`docs/`, `*.md`)만 바뀐 PR은 테스트를 건너뛰고 통과. 작업 환경 파일은 관리자 권한으로 `main`에 직접 푸시 |
 | 브랜치 | 이슈별 `<type>/<이슈번호>` 브랜치 → PR → Merge commit으로 `main`. 작업 환경 파일은 이슈·PR 없이 `main`에 직접 커밋 |
-| 테스트 종류 | 단위 테스트, 통합 테스트. 통합은 `@IntegrationTest`(`@Tag("integration")` + `@SpringBootTest`). `test`는 단위, `integrationTest`는 통합 |
+| 테스트 종류 | 단위 테스트, 통합 테스트. 통합은 `@IntegrationTest`(`@Tag("integration")` + `@SpringBootTest`). `test`는 단위, `integrationTest`는 통합. 통합은 `SpringTest` 상속(H2 인메모리, `@Transactional` 롤백), 공급사 호출은 MockWebServer, 단위는 BDDMockito·AssertJ. 위치·형식은 `test-write/references/test-conventions.md` |
 | CI | GitHub Actions. `main` 대상 PR에서 한 job으로 단위·통합 테스트 step 분리 |
 
 ## 미결정
@@ -34,7 +34,6 @@
 - 공급사 요청·응답 DTO의 위치
 - 내부 식별자 형식
 - 타임아웃·재시도·서킷 브레이커 구현 방식
-- 테스트 파일 위치 규칙
 - 커밋 단위 기준
 - `docs/` 구성
 - 매핑 동기화 시점
