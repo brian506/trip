@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    # 컨텍스트마다 다른 인메모리 DB를 써서 캐시된 컨텍스트끼리 스키마가 충돌하지 않게 한다.
+    url: jdbc:h2:mem:${random.uuid};DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
