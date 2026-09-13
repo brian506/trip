@@ -1,0 +1,36 @@
+#!/bin/sh
+# Public repository guard: source documents and forbidden words in staged changes.
+
+ROOT=$(git rev-parse --show-toplevel)
+CHECK="$ROOT/scripts/check-forbidden-words.sh"
+FAIL=0
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACR)
+
+docs=$(printf '%s\n' "$STAGED" | grep -iE '\.(pdf|docx?|hwp)$')
+if [ -n "$docs" ]; then
+    echo "FAIL  원본 문서 파일은 커밋하지 않는다"
+    printf '%s\n' "$docs" | sed 's/^/      /'
+    FAIL=1
+fi
+
+path_hit=$(printf '%s\n' "$STAGED" | sh "$CHECK")
+case $? in
+    1) echo "FAIL  파일 경로에 금지어가 있다"; printf '%s\n' "$path_hit" | sed 's/^/      /'; FAIL=1 ;;
+    2) exit 1 ;;
+esac
+
+line_hit=$(git diff --cached -U0 --diff-filter=ACMR --no-color \
+    | awk '/^\+\+\+ b\//{f=substr($0,7); next} /^\+/{print f": "substr($0,2)}' \
+    | sh "$CHECK")
+case $? in
+    1) echo "FAIL  추가된 줄에 금지어가 있다"; printf '%s\n' "$line_hit" | sed 's/^/      /'; FAIL=1 ;;
+    2) exit 1 ;;
+esac
+
+if [ "$FAIL" -eq 1 ]; then
+    echo ""
+    echo "커밋이 차단됐다. 위 항목을 고친 뒤 다시 커밋한다."
+    exit 1
+fi
+exit 0

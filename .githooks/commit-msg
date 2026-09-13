@@ -1,0 +1,36 @@
+#!/bin/sh
+# Commit message guard: subject format + forbidden words.
+
+MSG_FILE="$1"
+ROOT=$(git rev-parse --show-toplevel)
+CHECK="$ROOT/scripts/check-forbidden-words.sh"
+TYPES="feature|fix|refactor|test|docs|chore"
+
+SUBJECT=$(grep -v '^#' "$MSG_FILE" | grep -v '^[[:space:]]*$' | head -n 1)
+
+case "$SUBJECT" in
+    Merge\ *|Revert\ *) ;;
+    *)
+        if ! printf '%s\n' "$SUBJECT" | grep -qE "^($TYPES)\[#[0-9]+\]: .+"; then
+            echo "FAIL  커밋 제목 형식: <type>[#<이슈번호>]: <설명>"
+            echo "      type: $TYPES"
+            echo "      입력값: $SUBJECT"
+            exit 1
+        fi
+        ;;
+esac
+
+# GitHub closes an issue when a closing keyword reaches the default branch. Issues stay open until the user closes them.
+closing=$(grep -v '^#' "$MSG_FILE" | grep -inE '(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+([[:alnum:]_.-]+/[[:alnum:]_.-]+)?#[0-9]+')
+if [ -n "$closing" ]; then
+    echo "FAIL  이슈 자동 종료 키워드를 쓰지 않는다 (close/fix/resolve #N)"
+    printf '%s\n' "$closing" | sed 's/^/      /'
+    exit 1
+fi
+
+hit=$(grep -v '^#' "$MSG_FILE" | sh "$CHECK")
+case $? in
+    1) echo "FAIL  커밋 메시지에 금지어가 있다"; printf '%s\n' "$hit" | sed 's/^/      /'; exit 1 ;;
+    2) exit 1 ;;
+esac
+exit 0

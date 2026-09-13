@@ -1,0 +1,29 @@
+name: Bug
+description: 버그 수정
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    attributes:
+      label: 📄 현상
+      description: 어떤 입력에서 어떤 결과가 나왔는지 작성해주세요.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ 기대 동작
+      description: 기대했던 동작을 작성해주세요.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🖼️ 첨부 자료
+      description: 로그, 요청·응답 예시 등이 있다면 작성해주세요.
+  - type: textarea
+    attributes:
+      label: 🧭 원인과 결정 요약
+      description: 원인과 수정 방향을 한 줄씩 적어주세요. 분석 과정은 JOURNAL.md에 적습니다.
+  - type: input
+    attributes:
+      label: 📝 JOURNAL 링크
+      description: JOURNAL.md에서 이 이슈 섹션의 링크를 적어주세요.

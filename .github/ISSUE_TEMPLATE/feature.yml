@@ -1,0 +1,28 @@
+name: Feature
+description: 기능 구현
+title: "[Feature]: "
+labels: ["feature"]
+body:
+  - type: textarea
+    attributes:
+      label: 📄 목표
+      description: 이 이슈가 끝나면 무엇이 동작하는지 작성해주세요.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ 작업할 내용
+      description: 할 일을 체크박스 형태로 작성해주세요.
+      value: |
+        - [ ] TODO
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🧭 결정 요약
+      description: 결정을 한 줄씩 적어주세요. 근거와 버린 대안은 JOURNAL.md에 적습니다.
+      placeholder: "- 선택한 것: 한 줄 요약"
+  - type: input
+    attributes:
+      label: 📝 JOURNAL 링크
+      description: JOURNAL.md에서 이 이슈 섹션의 링크를 적어주세요.

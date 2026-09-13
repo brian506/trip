@@ -1,0 +1,27 @@
+name: Chore
+description: 설정, 문서, 테스트 등 기능 외 작업
+title: "[Chore]: "
+labels: ["chore"]
+body:
+  - type: textarea
+    attributes:
+      label: 📄 목표
+      description: 이 작업으로 무엇이 갖춰지는지 작성해주세요.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ 작업할 내용
+      description: 할 일을 체크박스 형태로 작성해주세요.
+      value: |
+        - [ ] TODO
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🧭 결정 요약
+      description: 결정을 한 줄씩 적어주세요. 근거와 버린 대안은 JOURNAL.md에 적습니다.
+  - type: input
+    attributes:
+      label: 📝 JOURNAL 링크
+      description: JOURNAL.md에서 이 이슈 섹션의 링크를 적어주세요.

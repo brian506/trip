@@ -1,0 +1,27 @@
+name: Refactor
+description: 리팩터링 작업
+title: "[Refactor]: "
+labels: ["refactor"]
+body:
+  - type: textarea
+    attributes:
+      label: 📄 바꾸는 이유
+      description: 현재 구조의 문제를 작성해주세요.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ 작업할 내용
+      description: 할 일을 체크박스 형태로 작성해주세요.
+      value: |
+        - [ ] TODO
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🧭 결정 요약
+      description: 결정을 한 줄씩 적어주세요. 근거와 버린 대안은 JOURNAL.md에 적습니다.
+  - type: input
+    attributes:
+      label: 📝 JOURNAL 링크
+      description: JOURNAL.md에서 이 이슈 섹션의 링크를 적어주세요.
