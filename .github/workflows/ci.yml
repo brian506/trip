@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # 필수 체크라 항상 실행하고, 문서만 바뀐 PR은 테스트 step을 건너뛰어 통과시킨다.
+      - name: 문서 외 변경 확인
+        id: changes
+        run: |
+          if git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD | grep -qvE '^docs/|\.md$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.changes.outputs.code == 'true'
+        uses: actions/setup-java@v6
+        with:
+          distribution: corretto
+          java-version: '25'
+
+      - if: steps.changes.outputs.code == 'true'
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: 단위 테스트
+        if: steps.changes.outputs.code == 'true'
+        run: ./gradlew test
+
+      - name: 통합 테스트
+        if: steps.changes.outputs.code == 'true'
+        run: ./gradlew integrationTest
+
+      - name: 테스트 리포트 업로드
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: build/reports/tests/
