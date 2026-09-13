@@ -1,9 +1,9 @@
 package com.trip;
 
+import com.trip.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+@IntegrationTest
 class TripApplicationTests {
 
 	@Test
