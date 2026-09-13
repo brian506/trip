@@ -1,7 +1,8 @@
 #!/bin/sh
 # Pre-push: last guard before commits become public.
 # 1. Forbidden words in commit messages and added lines of the pushed commits
-# 2. Code or build settings changed -> ./gradlew clean build (compile + all tests)
+# 2. Code or build settings changed -> ./gradlew clean test (compile + unit tests). Integration tests run in CI.
+#    Tests run on the working tree, so the pushed branch must be checked out.
 # Code review split by change type (src/main -> review, src/test -> test-review) runs in Claude before push. See .claude/skills/push/SKILL.md.
 
 ROOT=$(git rev-parse --show-toplevel)
@@ -12,8 +13,15 @@ ZERO=0000000000000000000000000000000000000000
 REVS=$(mktemp)
 trap 'rm -f "$REVS"' EXIT
 
+HEAD_REF=$(git symbolic-ref -q HEAD)
+HEAD_SHA=$(git rev-parse HEAD)
+NOT_CHECKED_OUT=""
+
 while read -r local_ref local_sha remote_ref remote_sha; do
     [ "$local_sha" = "$ZERO" ] && continue
+    if [ "$local_ref" != "$HEAD_REF" ] || [ "$local_sha" != "$HEAD_SHA" ]; then
+        NOT_CHECKED_OUT="$NOT_CHECKED_OUT $local_ref"
+    fi
     if [ "$remote_sha" = "$ZERO" ]; then
         git rev-list "$local_sha" --not --remotes >> "$REVS"
     else
@@ -42,7 +50,13 @@ if [ -z "$code_changed" ]; then
     exit 0
 fi
 
-echo "[pre-push] clean build (컴파일 + 전체 테스트)"
-./gradlew clean build --console=plain -q || { echo "FAIL  빌드 또는 테스트 실패. 푸시를 중단한다"; exit 1; }
+if [ -n "$NOT_CHECKED_OUT" ]; then
+    echo "FAIL  푸시할 브랜치를 체크아웃한 뒤 푸시한다. 테스트는 작업 트리 기준으로 돈다"
+    echo "      대상:$NOT_CHECKED_OUT"
+    exit 1
+fi
+
+echo "[pre-push] clean test (컴파일 + 단위 테스트)"
+./gradlew clean test --console=plain -q || { echo "FAIL  컴파일 또는 단위 테스트 실패. 푸시를 중단한다"; exit 1; }
 echo "[pre-push] 통과"
 exit 0

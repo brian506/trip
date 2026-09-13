@@ -21,9 +21,10 @@
 | 기록 | 저장소가 원본. 근거·과정은 `JOURNAL.md`, 이슈에는 요약과 링크 |
 | 커밋 | `type[#이슈번호]: 설명`, 이슈는 사용자가 닫는다. JOURNAL·설계 기록은 해당 구현·테스트 커밋에 함께 넣는다 |
 | 테스트 작성 | `@DisplayName` 자연어가 명세. 정상·경계·예외 상황을 제시하고 사용자가 고른 것만 구현. 구현 로직을 보고 케이스·기댓값을 만들지 않음 |
-| 푸시 전 검증 | 구현 `review`, 테스트 `test-review` 리뷰 게이트 + pre-push `clean build` |
+| 푸시 전 검증 | 구현 `review`, 테스트 `test-review` 리뷰 게이트 + pre-push `clean test`(단위, 푸시할 브랜치 체크아웃 필수) |
 | 브랜치 | 이슈별 `<type>/<이슈번호>` 브랜치 → PR → Merge commit으로 `main`. 작업 환경 파일은 이슈·PR 없이 `main`에 직접 커밋 |
-| 테스트 종류 | 단위 테스트, 통합 테스트. JUnit `@Tag`로 구분 |
+| 테스트 종류 | 단위 테스트, 통합 테스트. 통합은 `@IntegrationTest`(`@Tag("integration")` + `@SpringBootTest`). `test`는 단위, `integrationTest`는 통합 |
+| CI | GitHub Actions. `main` 대상 PR에서 한 job으로 단위·통합 테스트 step 분리 |
 
 ## 미결정
 
@@ -34,6 +35,5 @@
 - 타임아웃·재시도·서킷 브레이커 구현 방식
 - 테스트 파일 위치 규칙
 - 커밋 단위 기준
-- CI 구성
 - `docs/` 구성
 - 매핑 동기화 시점

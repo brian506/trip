@@ -19,7 +19,8 @@ argument-hint: "[commit | issue | journal] [설명]"
 | 경로 | 검사 |
 |------|------|
 | 커밋 | `pre-commit`: 원본 문서, 경로·추가 줄 금지어 / `commit-msg`: 형식, 자동 종료 키워드, 금지어 |
-| 푸시 | `pre-push`: 금지어, `clean build` |
+| 푸시 | `pre-push`: 금지어, `clean test`(단위). 푸시할 브랜치를 체크아웃해야 한다 |
+| PR | CI: 단위·통합 테스트 |
 | Claude의 `gh issue·pr create·edit·comment` | `.claude/hooks/check-gh-text.sh`가 실행 전 차단 |
 | 웹에서 쓴 이슈·PR·댓글 | `sh scripts/audit-github-text.sh`로 사후 점검. 제출 전 필수 |
 

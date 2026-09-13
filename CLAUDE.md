@@ -5,7 +5,7 @@
 Java 25, Spring Boot 4.1 MVC, WebClient, JPA, H2, Lombok, springdoc
 
 ## 명령어
-`./gradlew build|test|bootRun`. Mock은 profile `supplier`, port 9090
+`./gradlew build|test|integrationTest|bootRun` (`test`는 단위, `integrationTest`는 `@IntegrationTest`). Mock은 profile `supplier`, port 9090
 
 ## 구조
 `com.trip.{도메인}`: controller→business→implement→dataaccess, vo

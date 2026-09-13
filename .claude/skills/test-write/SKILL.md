@@ -69,8 +69,11 @@ gh issue view <N>
 
 ## Step 6: 실행
 
+단위 테스트는 `test`, `@IntegrationTest`를 붙인 통합 테스트는 `integrationTest`로 실행한다.
+
 ```bash
 ./gradlew test
+./gradlew integrationTest
 ```
 
 - 시그니처를 잘못 써서 난 컴파일 오류는 테스트 쪽 호출을 고친다.
