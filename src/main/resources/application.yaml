@@ -1,6 +1,3 @@
 spring:
   application:
     name: trip
-  threads:
-    virtual:
-      enabled: true
