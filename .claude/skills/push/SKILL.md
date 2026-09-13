@@ -44,8 +44,12 @@ sh scripts/unpushed-changes.sh test   # 테스트 코드
 
 ## Step 4: 푸시
 
+- `main`: 작업 환경 파일 커밋만 푸시한다. 그 외 변경이 있으면 멈추고 브랜치로 옮길지 묻는다.
+- `<type>/<이슈번호>` 브랜치: 푸시 후 PR이 없으면 `/git`의 branch · PR 규칙으로 만든다.
+
 ```bash
-git push origin <현재 브랜치>
+git push -u origin <현재 브랜치>
+gh pr create --base main --title "<type>[#N]: <설명>" --body "<변경 요약>\n\n관련 이슈: #N"
 ```
 
 `pre-push` 훅이 금지어 검사와 `./gradlew clean build`를 실행한다. 실패하면 원인을 고치고 다시 커밋한다.
@@ -53,5 +57,5 @@ git push origin <현재 브랜치>
 
 ## Step 5: 보고
 
-- 푸시한 커밋과 리뷰 결과를 요약한다.
+- 푸시한 커밋, 리뷰 결과, PR 링크를 요약한다. 머지는 하지 않는다.
 - 이슈는 닫지 않는다. 같은 이슈로 리팩토링·핫픽스가 이어질 수 있다.

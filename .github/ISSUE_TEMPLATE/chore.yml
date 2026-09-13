@@ -20,7 +20,7 @@ body:
   - type: textarea
     attributes:
       label: 🧭 결정 요약
-      description: 결정을 한 줄씩 적어주세요. 근거와 버린 대안은 JOURNAL.md에 적습니다.
+      description: 결정을 한 줄씩 적어주세요. 상황, 근거, 비교, 판단은 JOURNAL.md에 적습니다.
   - type: input
     attributes:
       label: 📝 JOURNAL 링크

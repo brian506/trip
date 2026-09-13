@@ -8,11 +8,20 @@ TYPES="feature|fix|refactor|test|docs|chore"
 
 SUBJECT=$(grep -v '^#' "$MSG_FILE" | grep -v '^[[:space:]]*$' | head -n 1)
 
+# Work environment files (Claude, hooks, scripts, issue templates) are committed to main without an issue.
+ENV_PATHS='^(\.claude/|CLAUDE\.md$|JOURNAL\.md$|\.githooks/|scripts/|\.github/ISSUE_TEMPLATE/)'
+NON_ENV=$(git diff --cached --name-only | grep -vE "$ENV_PATHS")
+
 case "$SUBJECT" in
     Merge\ *|Revert\ *) ;;
     *)
-        if ! printf '%s\n' "$SUBJECT" | grep -qE "^($TYPES)\[#[0-9]+\]: .+"; then
+        if printf '%s\n' "$SUBJECT" | grep -qE "^($TYPES)\[#[0-9]+\]: .+"; then
+            :
+        elif [ -z "$NON_ENV" ] && printf '%s\n' "$SUBJECT" | grep -qE "^($TYPES): .+"; then
+            :
+        else
             echo "FAIL  커밋 제목 형식: <type>[#<이슈번호>]: <설명>"
+            echo "      작업 환경 파일만 바꾼 커밋은 <type>: <설명>"
             echo "      type: $TYPES"
             echo "      입력값: $SUBJECT"
             exit 1

@@ -26,9 +26,17 @@ argument-hint: "[commit | issue | journal] [설명]"
 ## commit
 
 - 제목: `<type>[#<이슈번호>]: <한글 설명>`. type은 `feature`, `fix`, `refactor`, `test`, `docs`, `chore`.
+- 작업 환경 파일(`.claude/`, `CLAUDE.md`, `JOURNAL.md`, `.githooks/`, `scripts/`, `.github/ISSUE_TEMPLATE/`)만 바꾸면 이슈·PR 없이 `main`에서 `<type>: <한글 설명>`으로 커밋한다.
 - 커밋 단위 기준은 미결정이다. 애매하면 묻는다.
 - 커밋은 사용자가 요청할 때만 한다. `--no-verify`, `git add -f`는 쓰지 않는다.
 - 커밋 메시지에 `closes #N`, `fixes #N`, `resolves #N`을 쓰지 않는다.
+- JOURNAL·설계 기록은 별도 docs 이슈나 커밋으로 분리하지 않는다. 해당 구현·테스트 커밋에 함께 넣는다.
+
+## branch · PR
+
+- 작업 환경 파일 외의 변경은 이슈별 브랜치 `<type>/<이슈번호>`에서 작업한다. 예: `feature/5`
+- PR 제목은 `<type>[#<이슈번호>]: <한글 설명>`, 본문은 변경 요약과 `관련 이슈: #N`. 자동 종료 키워드는 쓰지 않는다.
+- 머지는 Merge commit(`gh pr merge --merge`)으로 하고, 사용자가 요청할 때만 한다.
 
 ## issue
 
@@ -40,8 +48,9 @@ argument-hint: "[commit | issue | journal] [설명]"
 ## journal
 
 - `JOURNAL.md`가 결정 기록의 원본이다. 이슈에만 쓰고 끝내지 않는다.
+- 기록 대상은 기술 선택과 구조 결정이다. 그 외 구현 세부는 적지 않는다.
 - 구조와 섹션 템플릿은 `JOURNAL.md` 상단 주석에 있다. `## Day N (날짜)` 안에 `### #N 제목`.
-- 결정은 선택, 근거, 버린 대안을 함께 쓴다. AI 활용은 질문, 수용·수정·거부, 이유를 쓴다.
+- 의사결정은 상황, 채택과 근거, 다른 방법과의 비교, 판단 이유 순으로 쓴다. AI 활용은 질문, 수용·수정·거부, 이유를 쓴다.
 - 이슈 작업을 마치면 JOURNAL 섹션을 먼저 쓰고, 이슈의 결정 요약과 링크를 채운다.
 - JOURNAL 내용은 사용자 판단이 드러나야 한다. 초안을 쓰면 사용자 확인을 받는다.
 
