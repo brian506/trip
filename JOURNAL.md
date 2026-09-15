@@ -223,6 +223,8 @@ DB
 - 동기화 중 목록 항목 하나가 검증에 실패했을 때의 처리 방식을 정했다.
 - 공급사별로 DB 저장 실패를 격리했다.
 - 항목 검증 실패 로그에 첫 오류의 코드와 사유를 남겼다.
+- 공급사 연동 코드를 `external/supplier`로, Mock 서버를 `mock/supplier`로 옮겼다.
+- B 본문 결과 코드 매핑을 전용 enum `BResultCode`로 바꿨다.
 - 로그 메시지 형식을 통일하고, 빈 목록으로 동기화를 건너뛸 때도 로그를 남겼다.
 
 #### **의사결정**
@@ -289,13 +291,13 @@ DB
 
 | 순서 | 위치 | 할 일 |
 |------|------|------|
-| 1 | `stay/vo/Supplier` | enum 값 추가. 이름은 16자 이하(`stay.supplier VARCHAR(16)`, 엔티티 `length = 16`)이고 yml 키와 같아야 한다 |
+| 1 | `external/supplier/Supplier` | enum 값 추가. 이름은 16자 이하(`stay.supplier VARCHAR(16)`, 엔티티 `length = 16`)이고 yml 키와 같아야 한다 |
 | 2 | `application.yaml` | `supplier.endpoints.C`에 `base-url`, `api-key`. 빠지면 기동이 멈춘다 |
-| 3 | `config/supplier/WebClientConfig` | `supplierC` 빈 메서드 추가(`build(builder, properties, Supplier.C)`) |
-| 4 | `stay/implement/dto/c` | 응답 record. 접두어 `C*`. 빠질 수 있는 숫자는 `Integer` 같은 래퍼 타입 |
-| 5 | `stay/implement/SupplierCClient` | `@Component`, `implements SupplierClient`. 아래 체크리스트대로 작성 |
-| 6 | `supplier/MockSupplierController` | 로컬 실행용 C 응답 추가(`@Profile("supplier")` 유지) |
-| 7 | 테스트 | MockWebServer로 정상·실패 분류 케이스 |
+| 3 | `external/supplier/WebClientConfig` | `supplierC` 빈 메서드 추가(`build(builder, properties, Supplier.C)`) |
+| 4 | `external/supplier/c/dto` | 응답 record. 접두어 `C*`. 빠질 수 있는 숫자는 `Integer` 같은 래퍼 타입 |
+| 5 | `external/supplier/c/SupplierCClient` | `@Component`, `implements SupplierClient`. 아래 체크리스트대로 작성. 본문 코드가 있으면 같은 패키지에 `CResultCode` enum |
+| 6 | `mock/supplier/MockSupplierController` | 로컬 실행용 C 응답 추가(`@Profile("supplier")` 유지) |
+| 7 | 테스트 | `external/supplier/c`에 MockWebServer로 정상·실패 분류 케이스 |
 
 `SupplierCClient` 작성 체크리스트
 
@@ -306,7 +308,7 @@ DB
   - HTTP 상태로 알리면 A처럼 `status.isError()` → `SupplierErrors.classify(status)`.
   - 항상 200에 본문 코드로 알리면 B처럼 파싱 뒤 코드 검사. 봉투가 제네릭이면 `TypeReference`로 파싱한다.
   - 둘 다 쓰면 HTTP 상태 → 본문 파싱 → 본문 코드 순서(`decisions.md` 실패 판정).
-- C 고유 코드는 Client 안에서 `SupplierFailureType`으로만 바꾼다. 기준은 "재시도해도 되는가"다(우리 쪽 문제면 `BAD_REQUEST`·`AUTH`, 기다리면 나아질 수 있으면 `RATE_LIMITED`·`UNAVAILABLE`). 원본 코드는 `code` 문자열로 남긴다.
+- C 고유 코드는 C 패키지 안에서만 `SupplierFailureType`으로 바꾼다(본문 코드는 B의 `BResultCode`처럼 전용 enum). 기준은 "재시도해도 되는가"다(우리 쪽 문제면 `BAD_REQUEST`·`AUTH`, 기다리면 나아질 수 있으면 `RATE_LIMITED`·`UNAVAILABLE`). 원본 코드는 `code` 문자열로 남긴다.
 - 성공 본문은 `caller.parse`로 읽는다. 빈 본문·파싱 실패는 실행기가 분류한다.
 - 목록 응답 고유 검사(목록 필드 null 등)는 `fetchStays`에서, DTO → `SupplierStay`·`SupplierRoomType` 변환은 Client 안에서 한다. DTO를 Client 밖으로 내보내지 않는다.
 
@@ -348,6 +350,25 @@ DB
 - 채택: 모든 로그를 `[카테고리 : 상세내용]: key=value | key=value`로 통일하고 `CLAUDE.md`에 규칙으로 적었다. 레벨은 정상 `info`, 예상된 실패 `warn`, 시스템 오류 `error`. 빈 목록 건너뜀에 `[숙소 동기화 : 빈 목록]` warn 로그를 추가했다.
   - 근거: 카테고리 접두어와 `|` 구분이 같으면 로그 검색·집계 규칙을 하나로 쓸 수 있다. 빈 목록은 응답 이상으로 보고 건너뛰기로 한 경우라 다른 건너뜀 사유와 같이 warn으로 남긴다.
 - 판단: 형식은 이미 쓰고 있던 것을 기준으로 삼고, 앞으로 흔들리지 않게 규칙 파일에 고정했다.
+
+공급사 코드 매핑 위치
+
+- 상황: B의 `resultCode`를 `SupplierBClient` 안의 `switch` 문자열로 `SupplierFailureType`에 매핑하고 있었다. 에러를 전역 `ErrorType`에서 한꺼번에 다뤄야 하지 않나 싶었다.
+- 채택: `ErrorType`과 합치지 않고, B 전용 enum `BResultCode`를 B 패키지에 둔다.
+  - 근거: `ErrorType`은 우리 API를 호출하는 쪽에 내려줄 HTTP 상태·메시지다. 공급사가 401을 준 건 우리 서버 설정 문제라 사용자에게 401을 주면 틀린 응답이 되고, 공급사 실패는 대부분 에러 응답이 아니라 검색 `failures[]`나 동기화 로그로 처리된다. 합치면 공급사 코드가 전역 enum에 섞여 공급사가 늘 때마다 전역 예외를 고쳐야 한다.
+- 비교: `switch` 유지 — 짧고 한눈에 보이지만 코드 문자열이 메서드 안에 흩어진다. `ErrorType`에 매핑 — 한곳에서 보이지만 위 이유로 역할이 섞인다.
+- 판단: 공급사 코드는 그 공급사 어댑터만 아는 지식이라 어댑터 안에 두되, 문자열을 enum 하나에 모았다. 코드가 없으면 `MALFORMED`, 모르는 코드는 `INTERNAL`로 둔다.
+
+외부 연동 패키지
+
+- 상황: `stay/implement`에 DB를 다루는 Manager와 HTTP 호출·JSON 파싱·전송 오류 변환 같은 외부 연동 코드가 섞여 있었고, 공급사 관련 코드가 `config/supplier`, `stay/implement`, `stay/vo`로 흩어져 있었다. Mock 서버 패키지 이름이 `supplier`라 실제 연동 코드와 헷갈렸다. 경계가 이상하다고 느꼈다.
+- 채택: 공급사 연동 코드를 최상위 `external/supplier`에 통째로 모은다(인터페이스, 실행기, 예외·실패 분류, 설정, 입력 모델). 공급사별 Client·코드 매핑·DTO는 `a/`·`b/`에 둔다. 입력 모델(`Supplier`·`SupplierStay`·`SupplierRoomType`)도 `external`로 옮긴다. Mock은 `mock/supplier`로 이름을 바꾼다.
+  - 근거: 공급사 관련 코드가 한곳에 모여 찾기 쉽고, 다른 도메인이 공급사를 쓰게 돼도 그대로 공유된다. 입력 모델을 `stay/vo`에 남기면 `stay.business → external → stay.vo`로 두 최상위 패키지가 서로를 참조하는 순환이 생긴다.
+- 비교:
+  - `stay/implement/supplier` 아래로만 분리 — 계층 규칙을 안 바꿔 변경이 가장 작지만, 외부 호출이 여전히 도메인 안에 있고 설정은 `config`에 떨어져 있다.
+  - 구현만 `external`로, `SupplierClient` 인터페이스·예외·실패 분류는 도메인에 두는 의존성 역전 — 도메인이 HTTP를 전혀 모르고 경계가 가장 뚜렷하지만, 공급사 코드가 두 곳으로 나뉘고 규칙이 늘어난다.
+  - 입력 모델을 `stay/vo`에 두고 순환 감수 — 도메인 모델이 도메인에 남지만, 나중에 `external`을 모듈로 떼거나 순환 검사를 걸면 다시 옮겨야 한다.
+- 판단: 한곳에 모으는 쪽을 택하고, 순환 대신 한 방향 의존을 택했다. 대가로 Business·Manager·엔티티(`Stay.supplier`)가 `external`을 import하고, "Business는 Implement만 참조" 규칙에 "도메인은 `external`을 참조할 수 있다"가 더해졌다. `architecture.md`·`forbidden.md`·`review.md`·`test-conventions.md`를 새 구조로 고쳤다.
 
 판단이 필요한 항목
 
@@ -401,3 +422,9 @@ DB
 - 질문: 잘못된 항목 개수 같은 로그로 데이터 오류를 파악하면 되는지 물었다.
   - 처리: 수정
   - 이유: AI는 지금 구조가 첫 오류에서 멈춰 개수를 셀 수 없고, 로그에 어떤 항목인지도 없다고 답했다. 전체를 건너뛰는 구조라 개수는 필요 없고 첫 오류만 남기면 된다고 판단했다. 대신 그 오류의 코드와 사유는 남기기로 하고, AI가 제시한 두 방식(VO data, Client가 숙소 코드 추가) 중 VO 방식을 골랐다.
+- 질문: 공급사 에러 매핑을 `ErrorType`에서 다뤄야 하지 않는지, 하드코딩 매핑이 맞는지 물었다.
+  - 처리: 수정
+  - 이유: AI는 `ErrorType`(우리 API 응답)과 `SupplierFailureType`(내부 분류)의 쓰임이 달라 합치면 안 된다고 답했고, 이는 받아들였다. 매핑 형태는 `switch` 유지와 전용 enum 중 전용 enum을 골랐다.
+- 질문: 외부 호출 구현부와 비즈니스 로직이 같은 도메인 패키지에 있어 경계가 이상하다고 했다.
+  - 처리: 수정
+  - 이유: AI는 implement 안 분리, 인터페이스만 도메인에 두는 의존성 역전, 통째로 최상위 분리 세 가지를 제시했다. 통째로 분리를 골랐고, AI가 입력 모델을 도메인에 두면 순환이 생긴다고 짚어 입력 모델까지 `external`로 옮겼다. Mock 패키지 이름도 바꿨다.

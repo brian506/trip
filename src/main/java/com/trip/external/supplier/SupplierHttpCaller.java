@@ -1,8 +1,5 @@
-package com.trip.stay.implement;
+package com.trip.external.supplier;
 
-import com.trip.config.supplier.SupplierProperties;
-import com.trip.stay.vo.Supplier;
-import com.trip.stay.vo.SupplierFailureType;
 import java.util.function.BiFunction;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatusCode;

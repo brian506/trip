@@ -1,4 +1,4 @@
-package com.trip.stay.implement.dto.b;
+package com.trip.external.supplier.b.dto;
 
 import java.util.List;
 

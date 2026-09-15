@@ -1,9 +1,9 @@
 package com.trip.stay.business;
 
 import com.trip.stay.implement.StayManager;
-import com.trip.stay.implement.SupplierCallException;
-import com.trip.stay.implement.SupplierClient;
-import com.trip.stay.vo.SupplierStay;
+import com.trip.external.supplier.SupplierCallException;
+import com.trip.external.supplier.SupplierClient;
+import com.trip.external.supplier.SupplierStay;
 import com.trip.support.exception.AppException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

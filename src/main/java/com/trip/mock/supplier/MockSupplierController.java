@@ -1,4 +1,4 @@
-package com.trip.supplier;
+package com.trip.mock.supplier;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;

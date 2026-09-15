@@ -1,13 +1,17 @@
-package com.trip.stay.implement;
+package com.trip.external.supplier.a;
 
-import com.trip.stay.implement.dto.a.AErrorResponse;
-import com.trip.stay.implement.dto.a.AHotel;
-import com.trip.stay.implement.dto.a.AHotelsResponse;
-import com.trip.stay.implement.dto.a.ARoomType;
-import com.trip.stay.vo.Supplier;
-import com.trip.stay.vo.SupplierFailureType;
-import com.trip.stay.vo.SupplierRoomType;
-import com.trip.stay.vo.SupplierStay;
+import com.trip.external.supplier.Supplier;
+import com.trip.external.supplier.SupplierCallException;
+import com.trip.external.supplier.SupplierClient;
+import com.trip.external.supplier.SupplierErrors;
+import com.trip.external.supplier.SupplierFailureType;
+import com.trip.external.supplier.SupplierHttpCaller;
+import com.trip.external.supplier.SupplierRoomType;
+import com.trip.external.supplier.SupplierStay;
+import com.trip.external.supplier.a.dto.AErrorResponse;
+import com.trip.external.supplier.a.dto.AHotel;
+import com.trip.external.supplier.a.dto.AHotelsResponse;
+import com.trip.external.supplier.a.dto.ARoomType;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;

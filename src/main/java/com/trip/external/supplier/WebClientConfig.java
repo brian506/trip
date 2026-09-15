@@ -1,6 +1,5 @@
-package com.trip.config.supplier;
+package com.trip.external.supplier;
 
-import com.trip.stay.vo.Supplier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.boot.http.client.reactive.ClientHttpConnectorBuilder;

@@ -17,7 +17,7 @@
 | 도메인 검증 | VO 생성자에서 `AppException` |
 | 응답·에러 | `ApiResponse`, `AppException`, `ErrorType`, `ErrorCode`, `ApiControllerAdvice` |
 | 라이브러리 | Lombok (`lombok.config` 제약), springdoc-openapi |
-| 공급사 Mock 서버 | `supplier` 패키지, `@Profile("supplier")`, 9090 포트 별도 프로세스 |
+| 공급사 Mock 서버 | `mock/supplier` 패키지, `@Profile("supplier")`, 9090 포트 별도 프로세스 |
 | 기록 | 저장소가 원본. 근거·과정은 `JOURNAL.md`, 이슈에는 요약과 링크 |
 | 커밋 | `type[#이슈번호]: 설명`, 이슈는 사용자가 닫는다. JOURNAL·설계 기록은 해당 구현·테스트 커밋에 함께 넣는다 |
 | 테스트 작성 | `@DisplayName` 자연어가 명세. 정상·경계·예외 상황을 제시하고 사용자가 고른 것만 구현. 구현 로직을 보고 케이스·기댓값을 만들지 않음 |
@@ -50,11 +50,13 @@
 | 동기화 항목 오류 | 목록 응답 중 한 항목이라도 검증(`INVALID_SUPPLIER_STAY`)에 실패하면 그 공급사 동기화 전체를 건너뛰고 기존 DB 값을 유지한다. 잘못된 항목만 빼고 반영하는 방식은 채택하지 않음: 빠진 숙소가 목록에 없는 숙소로 처리돼 비활성화되면 응답 오류 때문에 판매 중인 숙소가 검색에서 사라진다. 목록 데이터는 잘 바뀌지 않아 다음 주기(최대 하루) 반영으로 충분. 검색 경로의 항목 단위 제외(매핑 없는 객실, 날짜 누락)는 저장이 없어 그대로 둔다 |
 | 동기화 저장 실패 격리 | 공급사마다 `StayManager.sync` 예외를 잡아 error 로그(예외 포함)를 남기고 다음 공급사로 진행한다. 트랜잭션이 공급사마다 분리돼 실패한 공급사만 롤백된다. DB 저장 재시도는 넣지 않음: 제약 위반 같은 결정적 오류는 같은 실패만 반복하고, 재시도를 다 써도 격리는 따로 필요하며, 내장 H2라 일시적 오류가 드물다. 재시도는 미결정 항목과 함께 정한다 |
 | 로그 형식 | `[카테고리 : 상세내용]: key=value \| key=value`로 통일(`CLAUDE.md`). 레벨은 정상 흐름 `info`, 예상된 실패 `warn`, 시스템 오류 `error`. 동기화를 건너뛸 때는 사유마다 로그를 남긴다: 목록 조회 실패·항목 검증 실패·빈 목록은 `warn`, 저장 실패·스케줄 실행 실패는 `error`(예외 포함) |
-| DTO 위치 | `stay/implement/dto/{a,b}` 공급사별 하위 패키지. 클래스명 접두어(`A*`, `B*`)는 유지. Client와 `SupplierHttpCaller`는 `stay/implement` |
+| 외부 연동 패키지 | 공급사 연동 코드는 최상위 `com.trip.external.supplier`에 통째로 둔다: `SupplierClient` 인터페이스, `SupplierHttpCaller`·`SupplierErrors`, `SupplierCallException`·`SupplierFailureType`, `WebClientConfig`·`SupplierProperties`·`SupplierEndpoint`, 입력 모델 `Supplier`·`SupplierStay`·`SupplierRoomType`. 공급사별은 `a/`·`b/`에 Client, 코드 매핑, `dto/`. 의존은 도메인 → `external` 한 방향(Business·Manager·엔티티가 `external`을 import, `external`은 도메인을 import하지 않음). 입력 모델을 `stay/vo`에 두면 `stay ⇄ external` 순환이 생겨 `external`로 옮김. `stay/implement`에는 Manager만 남는다. Implement 안에서 분리, 인터페이스만 도메인에 두는 의존성 역전은 채택하지 않음 |
+| DTO 위치 | `external/supplier/{a,b}/dto` 공급사별 하위 패키지. 클래스명 접두어(`A*`, `B*`)는 유지 |
+| 공급사 코드 매핑 | 본문 코드가 있는 공급사는 전용 enum을 공급사 패키지에 둔다(`b/BResultCode`: 코드 → `SupplierFailureType`, 코드 없음 `MALFORMED`, 모르는 코드 `INTERNAL`). `ErrorType`과 합치지 않음: `ErrorType`은 우리 API 응답(HTTP 상태·메시지)용이고, 공급사 실패는 대부분 에러 응답이 되지 않으며(검색 `failures[]`, 동기화 로그), 공급사 코드가 전역 enum에 섞인다 |
 | 어댑터 구성 | `SupplierClient` 인터페이스(`supplier()`, `fetchStays()`. 재고·요금 `fetchOffers()`는 검색 구현 때 추가)와 `SupplierAClient`·`SupplierBClient`. Business는 `List<SupplierClient>`를 주입받아 공급사 분기 없음. 실패는 `SupplierCallException`(supplier, type, 원본 code). 공통 분류는 `SupplierErrors`(HTTP 상태 분류, 전송 오류 변환: `TIMEOUT`·`CONNECTION`·`BODY_TOO_LARGE`·`UNEXPECTED`). 신규 공급사 추가 = enum 값 + Client 구현체(`SupplierHttpCaller` 조합) + dto + `WebClientConfig` 빈 메서드 + yml `supplier.endpoints` |
 | 정규화 | A: 총액 `Σ(nightlyRate+taxAmount)`, B: `totalPrice`. 예약 가능 수 = 기간 내 날짜별 최솟값. 요청 기간의 날짜가 응답에 빠지면 그 항목은 버리고 경고 로그(총액·재고를 만들 수 없음). `taxAmount`는 표준에 없음. 통화는 변환 없이 코드 그대로 전달(현재 KRW뿐) |
 | 검색 응답 | `stays[]`(stayId, stayName, roomTypeId, roomTypeName, maxOccupancy, availableRooms, available, supplier, breakfastIncluded, currency, totalPrice) + `failures[]`. 예약 불가는 `availableRooms=0`으로 노출하고 빼지 않는다 |
-| Mock | `supplier` 패키지 `MockSupplierController`, `@Profile("supplier")`, `application-supplier.yaml`로 9090·인메모리 DB·동기화 off. 현재는 A·B 숙소 목록 고정 응답만 있다. 모드 전환(normal/error/no-response, `POST /control/{a|b}/mode?value=`)과 재고·요금 고정 날짜(2026-09-01~03) 응답은 검색 구현 때 추가 |
+| Mock | `mock/supplier` 패키지 `MockSupplierController`, `@Profile("supplier")`, `application-supplier.yaml`로 9090·인메모리 DB·동기화 off. 현재는 A·B 숙소 목록 고정 응답만 있다. 모드 전환(normal/error/no-response, `POST /control/{a|b}/mode?value=`)과 재고·요금 고정 날짜(2026-09-01~03) 응답은 검색 구현 때 추가 |
 | 도메인 패키지 | `com.trip.stay` — 매핑과 검색을 한 도메인에 |
 | 트랜잭션 경계 | 매핑 조회만 짧은 read-only 트랜잭션, 공급사 호출은 트랜잭션 밖. `spring.jpa.open-in-view=false`. 가상 스레드는 스레드를 놓지 커넥션을 놓지 않으므로 둘 다 필요 |
 

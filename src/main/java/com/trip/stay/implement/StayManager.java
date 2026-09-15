@@ -2,9 +2,9 @@ package com.trip.stay.implement;
 
 import com.trip.stay.dataaccess.entity.Stay;
 import com.trip.stay.dataaccess.repository.StayRepository;
-import com.trip.stay.vo.SupplierRoomType;
-import com.trip.stay.vo.SupplierStay;
-import com.trip.stay.vo.Supplier;
+import com.trip.external.supplier.SupplierRoomType;
+import com.trip.external.supplier.SupplierStay;
+import com.trip.external.supplier.Supplier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;

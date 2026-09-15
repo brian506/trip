@@ -1,13 +1,17 @@
-package com.trip.stay.implement;
+package com.trip.external.supplier.b;
 
-import com.trip.stay.implement.dto.b.BPropertiesData;
-import com.trip.stay.implement.dto.b.BProperty;
-import com.trip.stay.implement.dto.b.BResponse;
-import com.trip.stay.implement.dto.b.BRoom;
-import com.trip.stay.vo.Supplier;
-import com.trip.stay.vo.SupplierFailureType;
-import com.trip.stay.vo.SupplierRoomType;
-import com.trip.stay.vo.SupplierStay;
+import com.trip.external.supplier.Supplier;
+import com.trip.external.supplier.SupplierCallException;
+import com.trip.external.supplier.SupplierClient;
+import com.trip.external.supplier.SupplierErrors;
+import com.trip.external.supplier.SupplierFailureType;
+import com.trip.external.supplier.SupplierHttpCaller;
+import com.trip.external.supplier.SupplierRoomType;
+import com.trip.external.supplier.SupplierStay;
+import com.trip.external.supplier.b.dto.BPropertiesData;
+import com.trip.external.supplier.b.dto.BProperty;
+import com.trip.external.supplier.b.dto.BResponse;
+import com.trip.external.supplier.b.dto.BRoom;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
@@ -53,25 +57,12 @@ public class SupplierBClient implements SupplierClient {
         }
         BResponse<T> response = caller.parse(SUPPLIER, body, type);
         if (!response.isSuccess()) {
-            throw new SupplierCallException(SUPPLIER, classify(response.resultCode()), response.resultCode());
+            throw new SupplierCallException(SUPPLIER, BResultCode.classify(response.resultCode()), response.resultCode());
         }
         if (response.data() == null) {
             throw new SupplierCallException(SUPPLIER, SupplierFailureType.MALFORMED, "NULL_DATA");
         }
         return response.data();
-    }
-
-    private SupplierFailureType classify(String resultCode) {
-        if (resultCode == null) {
-            return SupplierFailureType.MALFORMED;
-        }
-        return switch (resultCode) {
-            case "E400" -> SupplierFailureType.BAD_REQUEST;
-            case "E401" -> SupplierFailureType.AUTH;
-            case "E429" -> SupplierFailureType.RATE_LIMITED;
-            case "E503" -> SupplierFailureType.UNAVAILABLE;
-            default -> SupplierFailureType.INTERNAL;
-        };
     }
 
     private SupplierStay toSupplierStay(BProperty property) {

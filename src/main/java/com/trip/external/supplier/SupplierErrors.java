@@ -1,7 +1,5 @@
-package com.trip.stay.implement;
+package com.trip.external.supplier;
 
-import com.trip.stay.vo.Supplier;
-import com.trip.stay.vo.SupplierFailureType;
 import java.util.concurrent.TimeoutException;
 import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.http.HttpStatusCode;

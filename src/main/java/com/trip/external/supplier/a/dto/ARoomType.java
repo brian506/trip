@@ -1,4 +1,4 @@
-package com.trip.stay.implement.dto.a;
+package com.trip.external.supplier.a.dto;
 
 public record ARoomType(String roomTypeCode, String roomTypeName, Integer maxOccupancy) {
 }

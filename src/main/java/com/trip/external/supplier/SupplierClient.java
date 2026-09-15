@@ -1,7 +1,5 @@
-package com.trip.stay.implement;
+package com.trip.external.supplier;
 
-import com.trip.stay.vo.SupplierStay;
-import com.trip.stay.vo.Supplier;
 import java.util.List;
 
 

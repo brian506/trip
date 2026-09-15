@@ -1,7 +1,5 @@
-package com.trip.stay.implement;
+package com.trip.external.supplier;
 
-import com.trip.stay.vo.Supplier;
-import com.trip.stay.vo.SupplierFailureType;
 import lombok.Getter;
 
 // 공급사 호출 실패. 어댑터가 HTTP 상태·본문 코드를 내부 분류로 바꿔 던진다. 원본 코드는 code에 남긴다.

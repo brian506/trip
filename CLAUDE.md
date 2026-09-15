@@ -8,7 +8,7 @@ Java 25, Spring Boot 4.1 MVC, WebClient, JPA, H2, Lombok, springdoc
 `./gradlew build|test|integrationTest|bootRun` (`test`는 단위, `integrationTest`는 `@IntegrationTest`). Mock은 profile `supplier`, port 9090
 
 ## 구조
-`com.trip.{도메인}`: controller→business→implement→dataaccess, vo
+`com.trip.{도메인}`: controller→business→implement→dataaccess, vo. 공급사 연동은 `com.trip.external.supplier`(도메인→external 한 방향), Mock은 `com.trip.mock.supplier`
 
 ## 외부 API·환경
 공급사는 Mock만 호출. `core.hooksPath=.githooks`

@@ -1,6 +1,5 @@
-package com.trip.config.supplier;
+package com.trip.external.supplier;
 
-import com.trip.stay.vo.Supplier;
 import java.time.Duration;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
