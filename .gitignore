@@ -48,3 +48,6 @@ out/
 *.pdf
 *.docx
 *.hwp
+
+### Local H2 file DB ###
+data/

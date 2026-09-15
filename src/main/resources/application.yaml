@@ -1,3 +1,19 @@
 spring:
   application:
     name: trip
+
+  datasource:
+    url: jdbc:h2:file:./data/trip
+    username: sa
+    password: ""
+
+  sql:
+    init:
+      # 실행마다 schema.sql을 실행
+      mode: always
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    # OSIV 해제
+    open-in-view: false
