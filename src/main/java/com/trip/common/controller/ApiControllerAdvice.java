@@ -34,8 +34,6 @@ public class ApiControllerAdvice {
         return new ResponseEntity<>(ApiResponse.error(ErrorType.INVALID_ACCESS_PATH, null), HttpStatus.BAD_REQUEST);
     }
 
-    // @RequestParam 바인딩 실패(누락, 타입 변환 실패)는 @Valid 이전 단계에서 발생한다.
-    // 핸들러가 없으면 클라이언트 입력 오류가 500으로 흡수된다.
     @NullMarked
     @ExceptionHandler({MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class})
     public ResponseEntity<ApiResponse<@Nullable Object>> handleRequestParamException(Exception e) {
@@ -43,7 +41,6 @@ public class ApiControllerAdvice {
         return new ResponseEntity<>(ApiResponse.error(ErrorType.INVALID_ACCESS_PATH, null), HttpStatus.BAD_REQUEST);
     }
 
-    // @Validated 컨트롤러의 @RequestParam 제약 위반은 MethodArgumentNotValidException과 다른 타입으로 던져진다.
     @NullMarked
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<@Nullable Object>> handleConstraintViolationException(ConstraintViolationException e) {
