@@ -34,18 +34,28 @@
 | 내부 식별자 | UUID, 앱에서 생성(`@UuidGenerator`). 순번 ID의 정렬 이점은 비범위(정렬·페이징)라 없고, 예약 흐름이 붙으면 열거 가능한 ID가 통로가 되므로 처음부터 불투명하게. 안정성은 유일 제약 + upsert가 보장 |
 | H2 모드 | 실행은 파일(재시작 후에도 매핑·식별자 유지), 테스트는 인메모리 |
 | 스키마 | `schema.sql` + `ddl-auto: validate`. DDL이 파일로 남고 엔티티와 어긋나면 기동 실패 |
-| 매핑 엔티티 | `stay`(공급사, 공급사 숙소 코드, 이름, active, synced_at), `room_type`(stay FK, 공급사 객실 코드, 이름, 최대 인원, active, synced_at). 유일 키 `(supplier, supplier_hotel_code)`, `(stay_id, supplier_room_type_code)`. 목록에서 사라지면 삭제 대신 `active=false` |
+| 매핑 엔티티 | `stay`(PK stay_id, supplier, stay_code, name, active), `room_type`(PK room_type_id, stay_id, room_type_code, name, max_occupancy, active). PK 컬럼명은 `id` 대신 `<테이블>_id`. 컬럼명은 공급사 용어(hotel/property) 없이 중립으로. 유일 키 `(supplier, stay_code)`, `(stay_id, room_type_code)`. 목록에서 사라지면 삭제 대신 `active=false`(양쪽 테이블 모두). JPA 연관 매핑 없이 `stay_id` UUID 컬럼 + DDL FK 제약만, cascade 없음 |
+| 고정값 출처 | 숙소명·객실 타입명·최대 인원은 목록 API 스냅샷을 DB에 저장하고 응답에 DB 값을 쓴다. 재고·요금 API가 주는 같은 값은 무시. 요금·재고만 매 요청 공급사에서 |
+| 공통 시각 컬럼 | `BaseEntity`(`@MappedSuperclass`)에 `created_at`·`updated_at`(Spring Data JPA Auditing: `@CreatedDate`/`@LastModifiedDate`, `@EnableJpaAuditing`)만 둔다. 동기화는 목록 값이 DB와 다를 때만(이름·최대 인원 변경, 재활성화) 엔티티 `applyLatestInfo`가 필드를 바꾸고, 값이 같으면 건드리지 않아 UPDATE가 나가지 않는다(매 동기화마다 모든 행을 쓰지 않기 위함). 그래서 `updated_at`이 실제 변경 시각이 되고, 별도 `last_synced_at`은 `updated_at`과 겹쳐 두지 않는다. 엔티티 생성은 생성자에 `@Builder`. 타입은 `LocalDateTime` ↔ H2 `TIMESTAMP` |
+| 매핑 없는 객실 | 재고·요금 응답에 매핑에 없는 객실 코드가 오면 그 항목은 응답에서 빼고 로그만 남긴다. 검색 경로에는 쓰기를 두지 않으며, 다음 주기 동기화가 반영한다. 임계값 트리거는 숫자 근거가 없고 검색 빈도를 재게 되어 채택하지 않음 |
+| 매핑 조회 | 검색: `stay`는 `findAllBySupplierAndActiveTrue`, `room_type`은 `findAllByStayIdIn`(active 조건 없음. 팔 객실은 재고·요금 API가 정하므로 번역만 한다). 동기화: `findAllBySupplier`(비활성 포함), `findAllByStayIdIn`. 건별 코드 조회 대신 목록을 읽어 메모리에서 대조. 숙소가 통째로 빠져도 객실 `active`는 내리지 않는다(`stay.active`로 충분) |
+| Manager 구성 | 저장소마다 하나: `StayManager`(`StayRepository`), `RoomTypeManager`(`RoomTypeRepository`). 검색용 `findActive`·`findByStayIds`는 read-only, 동기화 `sync`는 쓰기 트랜잭션. 숙소·객실 타입 동기화는 원자적이어야 하므로 `StayManager.sync`가 같은 트랜잭션 안에서 `RoomTypeManager.sync`를 부른다(Implement 안 협력). Manager는 엔티티를 밖으로 내지 않고 VO로 변환해 반환 |
+| 동기화 VO | 목록 API 입력: `SupplierStay`(stayCode, name, roomTypes), `SupplierRoomType`(roomTypeCode, name, maxOccupancy). 빈 코드·이름, 최대 인원 1 미만은 `INVALID_SUPPLIER_STAY`(E1000, 502). 검색 출력: `StayMapping`, `RoomTypeMapping`(엔티티 `from`). 목록에 같은 코드가 두 번 오면 첫 건만 쓰고 경고 로그 |
+| 동기화 쓰기 배치 | JDBC 배치 `hibernate.jdbc.batch_size=50` + `order_updates=true`. 크기 50은 잠정값(공급사 목록 전체를 커밋 때 쓰므로 조회 단위와 무관). 서버형 DB로 옮기면 드라이버 멀티 row 재작성 지원·네트워크 지연·행 크기로 다시 정한다. `@UuidGenerator`(앱 생성 ID)라 INSERT도 배치된다(IDENTITY면 불가). `order_inserts`는 끈다: 연관 매핑이 없어 Hibernate가 FK 순서를 모르고, 숙소를 먼저 저장하므로 이미 종류별로 모여 있다 |
+| 타임아웃 | 연결 1s, 응답 3s, 검색 전체 예산 5s (`supplier.*`). 고객 체감 한계를 5초로 보고, 한 공급사가 늦어도 나머지로 5초 안에 응답. 커넥터(`HttpClientSettings`)에 연결·읽기, Mono `.timeout()`에 응답, `invokeAll(tasks, 예산)`에 전체. 예산 초과 태스크는 취소되고 `UNAVAILABLE/BUDGET_EXCEEDED` |
+| 부분 실패 표현 | 공급사 단위. 응답 `failures[]`에 (supplier, type, code) 한 건. 50개 묶음 중 일부만 실패해도 그 공급사를 실패로 표시하되 성공한 묶음의 상품은 그대로 응답 |
+| 동기화 시점 | 기동 시 1회(`ApplicationRunner`) + 매일 04:00(`@Scheduled`, `stay.sync.cron`) + 수동 `POST /api/v1/stays/sync`. 진입점은 `StaySyncScheduler`(controller 패키지). `stay.sync.enabled=false`로 끔(테스트·supplier 프로파일). 기동 시 공급사가 죽어 있어도 기동은 계속. 목록 호출 성공인데 비어 있으면 응답 이상으로 보고 건너뜀(전체 비활성화 안 함) |
+| DTO 위치 | `stay/implement/dto/{a,b}` 공급사별 하위 패키지. 클래스명 접두어(`A*`, `B*`)는 유지. Client는 `stay/implement`. 설정·WebClient 빈의 공급사별 하드코딩은 당분간 유지(추후 변경 가능) |
+| 어댑터 구성 | `SupplierClient` 인터페이스(`supplier()`, `fetchStays()`, `fetchOffers()`)와 `SupplierAClient`·`SupplierBClient`. Business는 `List<SupplierClient>`를 주입받아 공급사 분기 없음. 실패는 `SupplierCallException`(supplier, type, 원본 code). 공통 분류는 `SupplierErrors`. 신규 공급사 추가 = enum 값 + Client 구현체 + dto + WebClient 빈 + 설정 |
+| 정규화 | A: 총액 `Σ(nightlyRate+taxAmount)`, B: `totalPrice`. 예약 가능 수 = 기간 내 날짜별 최솟값. 요청 기간의 날짜가 응답에 빠지면 그 항목은 버리고 경고 로그(총액·재고를 만들 수 없음). `taxAmount`는 표준에 없음. 통화는 변환 없이 코드 그대로 전달(현재 KRW뿐) |
+| 검색 응답 | `stays[]`(stayId, stayName, roomTypeId, roomTypeName, maxOccupancy, availableRooms, available, supplier, breakfastIncluded, currency, totalPrice) + `failures[]`. 예약 불가는 `availableRooms=0`으로 노출하고 빼지 않는다 |
+| Mock | `supplier` 패키지 `MockSupplierController`, `@Profile("supplier")`, `application-supplier.yaml`로 9090·인메모리 DB·동기화 off. 모드 normal/error/no-response, `POST /control/{a|b}/mode?value=`. 고정 날짜(2026-09-01~03) 응답 |
 | 도메인 패키지 | `com.trip.stay` — 매핑과 검색을 한 도메인에 |
 | 트랜잭션 경계 | 매핑 조회만 짧은 read-only 트랜잭션, 공급사 호출은 트랜잭션 밖. `spring.jpa.open-in-view=false`. 가상 스레드는 스레드를 놓지 커넥션을 놓지 않으므로 둘 다 필요 |
 
 ## 미결정
 
-- 공급사 요청·응답 DTO의 위치
-- 타임아웃 값(연결·응답·전체 예산)과 재시도 횟수·백오프, 서킷 브레이커 채택 여부
-- 부분 실패 표현 단위 (공급사 단위 vs 50개 배치 단위)
-- 매핑에 없는 객실이 조회 응답에 왔을 때 처리 (버리고 기록 vs 즉시 매핑 생성)
-- 표준 모델에 `taxAmount`(A만 제공) 포함 여부
-- 통화: KRW만 가정할지
+- 재시도 횟수·백오프, 서킷 브레이커 채택 여부 (선택 구현. 현재 미구현)
+- 예약 불가 상품(availableRooms=0)을 응답에 포함(현재)할지 제외할지
 - 커밋 단위 기준
 - `docs/` 구성
-- 매핑 동기화 시점
