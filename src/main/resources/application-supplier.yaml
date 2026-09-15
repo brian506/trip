@@ -1,0 +1,11 @@
+# 공급사 Mock은 다른 포트(9090)로 해야 돼서 yml 파일 분리
+server:
+  port: 9090
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:supplier;DB_CLOSE_DELAY=-1
+
+stay:
+  sync:
+    enabled: false

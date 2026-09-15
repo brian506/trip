@@ -16,10 +16,11 @@
 
 ## Supplier Integration
 
-- **공급사 고유 요청·응답 타입이 Implement 밖으로 나가면 안 된다**
+- **공급사 고유 요청·응답 타입(`external/supplier/{a,b}/dto`)과 공급사 코드 매핑이 해당 공급사 하위 패키지 밖에서 쓰이면 안 된다**
+- **`external` 패키지가 도메인 패키지(`stay` 등)를 import하면 안 된다** (도메인 → `external` 한 방향만)
 - **Business·Controller가 공급사 종류에 따라 분기하면 안 된다**
-- **애플리케이션 코드가 `supplier` 패키지(Mock 서버)를 import하면 안 된다**
-- **`supplier` 패키지의 빈에서 `@Profile("supplier")`를 빠뜨리면 안 된다**
+- **애플리케이션 코드가 `mock` 패키지(Mock 서버)를 import하면 안 된다**
+- **`mock` 패키지의 빈에서 `@Profile("supplier")`를 빠뜨리면 안 된다**
 
 ## Implement
 

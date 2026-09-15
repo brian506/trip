@@ -17,3 +17,30 @@ spring:
       ddl-auto: validate
     # OSIV 해제
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        # 엔티티별로 순서대로 처리
+        order_updates: true
+
+  threads:
+    virtual:
+      enabled: true
+
+supplier:
+  endpoints:
+    A:
+      base-url: http://localhost:9090
+      api-key: dev-key-a
+    B:
+      base-url: http://localhost:9090
+      api-key: dev-key-b
+  connect-timeout: 1s
+  response-timeout: 3s
+
+stay:
+  sync:
+    # 동기화 : 기동 시 1회 + 매일 04:00.
+    enabled: true
+    cron: "0 0 4 * * *"

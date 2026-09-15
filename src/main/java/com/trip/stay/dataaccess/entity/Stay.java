@@ -1,6 +1,6 @@
 package com.trip.stay.dataaccess.entity;
 
-import com.trip.stay.vo.Supplier;
+import com.trip.external.supplier.Supplier;
 import com.trip.support.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

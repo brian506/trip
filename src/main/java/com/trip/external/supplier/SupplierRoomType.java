@@ -1,4 +1,4 @@
-package com.trip.stay.vo;
+package com.trip.external.supplier;
 
 import com.trip.support.exception.AppException;
 import com.trip.support.exception.ErrorType;

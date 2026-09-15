@@ -11,7 +11,8 @@
 | 도메인 단위 | VO | 순수 JUnit | `{domain}/vo/*Test` | `test` |
 | 컴포넌트 단위 | Manager 등 implement | Mockito | `{domain}/implement/*Test` | `test` |
 | 서비스 단위 | business | Mockito | `{domain}/business/*ServiceTest` | `test` |
-| 공급사 Client 단위 | WebClient 호출, 타임아웃, 에러 응답 | MockWebServer | `{domain}/implement/*ClientTest` | `test` |
+| 공급사 입력 모델 단위 | `SupplierStay` 등 `external/supplier`의 VO | 순수 JUnit | `external/supplier/*Test` | `test` |
+| 공급사 Client 단위 | WebClient 호출, 타임아웃, 에러 응답 | MockWebServer | `external/supplier/{a,b}/*ClientTest` | `test` |
 | 통합 | 서비스 + H2 | `SpringTest` 상속 | `{domain}/integration/*IntegrationTest` | `integrationTest` |
 
 - 픽스처는 `{domain}/fixture/*Fixture`에 둔다. static 상수와 팩토리 메서드, 또는 enum 픽스처로 직접 만든다.
