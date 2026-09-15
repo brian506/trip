@@ -17,3 +17,18 @@ spring:
       ddl-auto: validate
     # OSIV 해제
     open-in-view: false
+
+  threads:
+    virtual:
+      enabled: true
+
+supplier:
+  endpoints:
+    A:
+      base-url: http://localhost:9090
+      api-key: dev-key-a
+    B:
+      base-url: http://localhost:9090
+      api-key: dev-key-b
+  connect-timeout: 1s
+  response-timeout: 3s
