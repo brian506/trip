@@ -71,6 +71,6 @@ public class RoomTypeManager {
         }
 
         roomTypeRepository.saveAll(created);
-        log.info("객실 타입 동기화 완료. created={}, updated={}, deactivated={}", created.size(), updated, deactivated);
+        log.info("[객실 타입 동기화 : 완료]: created={} | updated={} | deactivated={}", created.size(), updated, deactivated);
     }
 }

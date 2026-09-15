@@ -34,7 +34,7 @@ public class StayManager {
                 .collect(Collectors.toMap(Stay::getStayCode, Function.identity()));
 
         List<Stay> created = new ArrayList<>();
-        Map<Stay, List<SupplierRoomType>> supplierRoomTypesByStay = new HashMap<>(); //
+        Map<Stay, List<SupplierRoomType>> supplierRoomTypesByStay = new HashMap<>();
         Set<String> supplierStayCodes = new HashSet<>();
         int updated = 0;
 
@@ -70,7 +70,7 @@ public class StayManager {
         supplierRoomTypesByStay.forEach((stay, roomTypes) -> supplierRoomTypesByStayId.put(stay.getId(), roomTypes));
         roomTypeManager.sync(supplierRoomTypesByStayId);
 
-        log.info("숙소 동기화 완료. supplier={}, created={}, updated={}, deactivated={}",
+        log.info("[숙소 동기화 : 완료]: supplier={} | created={} | updated={} | deactivated={}",
                 supplier, created.size(), updated, deactivated);
     }
 }

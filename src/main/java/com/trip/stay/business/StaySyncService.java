@@ -30,21 +30,21 @@ public class StaySyncService {
         try {
             supplierStays = client.fetchStays();
         } catch (SupplierCallException e) {
-            log.warn("숙소 목록 조회 실패로 동기화 건너뜀. supplier={}, type={}, code={}",
+            log.warn("[숙소 동기화 : 목록 조회 실패]: supplier={} | type={} | code={}",
                     e.getSupplier(), e.getType(), e.getCode());
             return;
         } catch (AppException e) {
-            log.warn("숙소 목록 항목이 올바르지 않아 동기화 건너뜀. supplier={}, detail={}",
-                    client.supplier(), e.getData());
+            log.warn("[숙소 동기화 : 항목 검증 실패]: supplier={} | detail={}", client.supplier(), e.getData());
             return;
         }
         if (supplierStays.isEmpty()) {
+            log.warn("[숙소 동기화 : 빈 목록]: supplier={}", client.supplier());
             return;
         }
         try {
             stayManager.sync(client.supplier(), supplierStays);
         } catch (RuntimeException e) {
-            log.error("숙소 목록 저장 실패로 동기화 건너뜀. supplier={}", client.supplier(), e);
+            log.error("[숙소 동기화 : 저장 실패]: supplier={}", client.supplier(), e);
         }
     }
 }

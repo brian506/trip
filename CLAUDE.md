@@ -16,6 +16,7 @@ Java 25, Spring Boot 4.1 MVC, WebClient, JPA, H2, Lombok, springdoc
 ## 주의
 - 미결정(`.claude/references/decisions.md`)은 묻는다
 - 금지어·기획 원문 금지
+- 로그는 `[카테고리 : 상세내용]: key=value | key=value` 형식으로 통일. 레벨은 정상 `info`, 예상된 실패 `warn`, 시스템 오류 `error`
 - 한국어 답변
 
 ## 자주 하는 실수

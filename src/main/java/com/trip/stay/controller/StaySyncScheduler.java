@@ -34,7 +34,7 @@ public class StaySyncScheduler implements ApplicationRunner {
         try {
             staySyncService.syncAll();
         } catch (RuntimeException e) {
-            log.error("숙소 목록 동기화 실패. trigger={}", trigger, e);
+            log.error("[숙소 동기화 : 실행 실패]: trigger={}", trigger, e);
         }
     }
 }
