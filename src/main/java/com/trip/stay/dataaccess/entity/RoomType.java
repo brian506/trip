@@ -6,7 +6,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -49,11 +48,14 @@ public class RoomType extends BaseEntity {
         this.active = true;
     }
 
-    public void sync(String name, int maxOccupancy, LocalDateTime syncedAt) {
+    public boolean applyLatestInfo(String name, int maxOccupancy) {
+        if (this.name.equals(name) && this.maxOccupancy == maxOccupancy && this.active) {
+            return false;
+        }
         this.name = name;
         this.maxOccupancy = maxOccupancy;
         this.active = true;
-        markSynced(syncedAt);
+        return true;
     }
 
     public void markAsNonExist() {

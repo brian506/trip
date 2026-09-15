@@ -9,6 +9,4 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface StayRepository extends JpaRepository<Stay, UUID> {
 
     List<Stay> findAllBySupplier(Supplier supplier);
-
-    List<Stay> findAllBySupplierAndActiveTrue(Supplier supplier);
 }

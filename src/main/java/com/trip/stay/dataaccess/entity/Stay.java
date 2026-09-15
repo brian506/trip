@@ -8,7 +8,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -49,10 +48,13 @@ public class Stay extends BaseEntity {
         this.active = true;
     }
 
-    public void sync(String name, LocalDateTime syncedAt) {
+    public boolean applyLatestInfo(String name) {
+        if (this.name.equals(name) && this.active) {
+            return false;
+        }
         this.name = name;
         this.active = true;
-        markSynced(syncedAt);
+        return true;
     }
 
     public void markAsNonExist() {

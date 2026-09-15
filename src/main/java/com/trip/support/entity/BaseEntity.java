@@ -3,7 +3,6 @@ package com.trip.support.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.PrePersist;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import org.springframework.data.annotation.CreatedDate;
@@ -22,18 +21,4 @@ public abstract class BaseEntity {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    @Column(name = "last_synced_at", nullable = false)
-    private LocalDateTime lastSyncedAt;
-
-    @PrePersist
-    void initLastSyncedAt() {
-        if (lastSyncedAt == null) {
-            lastSyncedAt = LocalDateTime.now();
-        }
-    }
-
-    protected void markSynced(LocalDateTime syncedAt) {
-        this.lastSyncedAt = syncedAt;
-    }
 }
