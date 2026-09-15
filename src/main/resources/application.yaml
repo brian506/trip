@@ -17,6 +17,12 @@ spring:
       ddl-auto: validate
     # OSIV 해제
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        # 엔티티별로 순서대로 처리
+        order_updates: true
 
   threads:
     virtual:
