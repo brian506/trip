@@ -38,3 +38,9 @@ supplier:
       api-key: dev-key-b
   connect-timeout: 1s
   response-timeout: 3s
+
+stay:
+  sync:
+    # 동기화 : 기동 시 1회 + 매일 04:00.
+    enabled: true
+    cron: "0 0 4 * * *"

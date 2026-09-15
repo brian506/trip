@@ -1,0 +1,50 @@
+package com.trip.stay.business;
+
+import com.trip.stay.implement.StayManager;
+import com.trip.stay.implement.SupplierCallException;
+import com.trip.stay.implement.SupplierClient;
+import com.trip.stay.vo.SupplierStay;
+import com.trip.support.exception.AppException;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class StaySyncService {
+
+    private final List<SupplierClient> clients;
+    private final StayManager stayManager;
+
+    public void syncAll() {
+        for (SupplierClient client : clients) {
+            sync(client);
+        }
+    }
+
+    private void sync(SupplierClient client) {
+        List<SupplierStay> supplierStays;
+        try {
+            supplierStays = client.fetchStays();
+        } catch (SupplierCallException e) {
+            log.warn("숙소 목록 조회 실패로 동기화 건너뜀. supplier={}, type={}, code={}",
+                    e.getSupplier(), e.getType(), e.getCode());
+            return;
+        } catch (AppException e) {
+            log.warn("숙소 목록 항목이 올바르지 않아 동기화 건너뜀. supplier={}, detail={}",
+                    client.supplier(), e.getData());
+            return;
+        }
+        if (supplierStays.isEmpty()) {
+            return;
+        }
+        try {
+            stayManager.sync(client.supplier(), supplierStays);
+        } catch (RuntimeException e) {
+            log.error("숙소 목록 저장 실패로 동기화 건너뜀. supplier={}", client.supplier(), e);
+        }
+    }
+}
