@@ -23,7 +23,7 @@ com.trip/
 │   └── supplier/        # WebClientConfig (공급사별 WebClient 빈)
 ├── support/             # ApiResponse, AppException, ErrorType, ErrorCode
 ├── supplier/            # 외부 공급사 연동 — 루트에는 계약(SupplierClient, Supplier)만
-│   ├── vo/              # 도메인에 넘기는 입력 모델 (SupplierStay, SupplierRoomType)
+│   ├── vo/              # 도메인에 넘기는 모델 (SupplierStay, SupplierRoomType, SupplierFailure)
 │   ├── exception/       # SupplierCallException, SupplierFailureType, SupplierErrors
 │   ├── infra/           # SupplierHttpCaller, SupplierProperties, SupplierEndpoint
 │   ├── a/  b/           # 공급사별 Client, 코드 매핑, response/
@@ -40,6 +40,7 @@ com.trip/
 ```
 
 - 도메인에 해당 계층이 필요 없으면 그 패키지를 만들지 않는다.
+- `controller/response`는 응답 모양이 VO와 다를 때만 만든다. 필드가 VO와 똑같고 `from`이 값을 그대로 옮기기만 하는 record는 두지 않고, VO를 그대로 `ApiResponse.success()`에 넣는다. 내부 enum을 외부 문자열로 번역하거나 파생 필드를 두거나 `@Schema`를 붙일 일이 생기면 그때 만든다. 현재 `stay`에는 `controller/request`만 있다.
 
 ## Implement 계층 역할
 
@@ -58,6 +59,7 @@ com.trip/
 - 공급사별 코드는 하위 패키지(`a/`, `b/`)에 둔다: Client, 공급사 코드 → 내부 분류 매핑(예: `BResultCode`), 응답 형식은 `response/`.
 - 공급사 응답 형식 → VO 변환은 각 응답 record의 `toSupplierStay()`·`toSupplierRoomType()`가 맡는다. Client는 요청 조립과 응답 판정만 한다.
 - 공급사 호출 실패는 `SupplierCallException`(`AppException` 하위)으로 던진다. `SupplierFailureType`이 대응 `ErrorType`(`E2000`~)을 들고 있어 `ApiControllerAdvice`가 그대로 처리한다.
+- 예외를 값으로 바꿔야 하는 경로(검색의 부분 실패)는 `SupplierCallException.toFailure()`를 쓴다. 같은 세 필드(supplier, type, code)를 도메인에서 다시 선언하지 않는다.
 - 공급사 고유의 요청·응답 형식과 코드는 공급사 하위 패키지 밖으로 나가지 않는다. Client에서 `supplier`의 표준 모델로 변환해 반환한다.
 - Business와 Controller는 공급사 종류에 따라 분기하지 않는다. 공급사별 차이는 해당 Client 안에서 흡수한다.
 
