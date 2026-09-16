@@ -18,4 +18,9 @@ public enum SupplierFailureType {
     SupplierFailureType(ErrorType errorType) {
         this.errorType = errorType;
     }
+
+    // 다음 묶음을 불러도 같은 결과인 실패. 남은 묶음을 부르지 않고 그 공급사를 끝낸다.
+    public boolean stopsRemainingBatches() {
+        return this == AUTH || this == RATE_LIMITED || this == UNAVAILABLE;
+    }
 }
