@@ -23,6 +23,11 @@ public class RoomTypeManager {
 
     private final RoomTypeRepository roomTypeRepository;
 
+    @Transactional(readOnly = true)
+    public List<RoomType> findByStayIds(Set<UUID> stayIds, int guestCount) {
+        return roomTypeRepository.findAccommodatable(stayIds, guestCount);
+    }
+
     @Transactional
     public void sync(Map<UUID, List<SupplierRoomType>> supplierRoomTypesByStayId) {
         if (supplierRoomTypesByStayId.isEmpty()) {

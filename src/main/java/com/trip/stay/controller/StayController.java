@@ -3,7 +3,7 @@ package com.trip.stay.controller;
 import com.trip.stay.business.StaySearchService;
 import com.trip.stay.business.StaySyncService;
 import com.trip.stay.controller.request.StaySearchRequest;
-import com.trip.stay.vo.StaySearchResult;
+import com.trip.stay.controller.response.StaySearchResponse;
 import com.trip.support.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,12 +28,11 @@ public class StayController {
 
     @Operation(
             summary = "통합 검색",
-            description = """
-                    날짜와 인원으로 DB에서 먼저 숙소코드 조회하고, 이걸 가지고 공급사에 요금과 재고를 요청한다."""
+            description = "날짜와 인원으로 DB에서 먼저 숙소 코드를 조회하고, 이걸 가지고 공급사에 요금과 재고를 요청한다."
     )
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<StaySearchResult>> search(@Valid @ModelAttribute StaySearchRequest request) {
-        StaySearchResult result = staySearchService.search(request.toPeriod(), request.toGuests());
+    public ResponseEntity<ApiResponse<StaySearchResponse>> search(@Valid @ModelAttribute StaySearchRequest request) {
+        StaySearchResponse result = staySearchService.search(request.toPeriod(), request.toGuests());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

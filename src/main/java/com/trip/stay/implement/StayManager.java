@@ -2,6 +2,8 @@ package com.trip.stay.implement;
 
 import com.trip.stay.dataaccess.entity.Stay;
 import com.trip.stay.dataaccess.repository.StayRepository;
+import com.trip.stay.vo.RoomOption;
+import com.trip.support.vo.Guests;
 import com.trip.supplier.Supplier;
 import com.trip.supplier.vo.SupplierRoomType;
 import com.trip.supplier.vo.SupplierStay;
@@ -26,6 +28,19 @@ public class StayManager {
 
     private final StayRepository stayRepository;
     private final RoomTypeManager roomTypeManager;
+
+    @Transactional(readOnly = true)
+    public List<RoomOption> findActiveRooms(Guests guests) {
+        List<Stay> stays = stayRepository.findAllByActiveTrue();
+        if (stays.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, Stay> stayById = stays.stream().collect(Collectors.toMap(Stay::getId, Function.identity()));
+
+        return roomTypeManager.findByStayIds(stayById.keySet(), guests.total()).stream()
+                .map(roomType -> RoomOption.from(stayById.get(roomType.getStayId()), roomType))
+                .toList();
+    }
 
     @Transactional
     public void sync(Supplier supplier, List<SupplierStay> supplierStays) {

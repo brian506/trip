@@ -1,9 +1,10 @@
-package com.trip.stay.vo;
+package com.trip.support.vo;
 
 import com.trip.support.exception.AppException;
 import com.trip.support.exception.ErrorType;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 // 숙박 기간
 public record StayPeriod(LocalDate checkIn, LocalDate checkOut) {
@@ -25,5 +26,9 @@ public record StayPeriod(LocalDate checkIn, LocalDate checkOut) {
 
     public int nights() {
         return (int) ChronoUnit.DAYS.between(checkIn, checkOut);
+    }
+
+    public List<LocalDate> dates() {
+        return checkIn.datesUntil(checkOut).toList();
     }
 }
