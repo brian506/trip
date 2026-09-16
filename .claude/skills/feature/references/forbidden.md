@@ -16,11 +16,11 @@
 
 ## Supplier Integration
 
-- **공급사 고유 요청·응답 타입(`external/supplier/{a,b}/dto`)과 공급사 코드 매핑이 해당 공급사 하위 패키지 밖에서 쓰이면 안 된다**
-- **`external` 패키지가 도메인 패키지(`stay` 등)를 import하면 안 된다** (도메인 → `external` 한 방향만)
+- **공급사 고유 응답 타입(`supplier/{a,b}/response`)과 공급사 코드 매핑이 해당 공급사 하위 패키지 밖에서 쓰이면 안 된다**
+- **`supplier` 패키지가 도메인 패키지(`stay` 등)를 import하면 안 된다** (도메인 → `supplier` 한 방향만)
 - **Business·Controller가 공급사 종류에 따라 분기하면 안 된다**
-- **애플리케이션 코드가 `mock` 패키지(Mock 서버)를 import하면 안 된다**
-- **`mock` 패키지의 빈에서 `@Profile("supplier")`를 빠뜨리면 안 된다**
+- **루트 앱이 `mock-supplier` 모듈을 의존하거나 import하면 안 된다** (연동은 HTTP로만)
+- **Mock 서버 코드를 루트 앱 소스(`src/main/java`)에 두면 안 된다**
 
 ## Implement
 

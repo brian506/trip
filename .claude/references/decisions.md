@@ -9,7 +9,7 @@
 |------|------|
 | Language | Java 25 |
 | Framework | Spring Boot 4.1.1, Spring MVC |
-| Build | Gradle Groovy DSL, 단일 모듈 |
+| Build | Gradle Groovy DSL, 멀티 모듈(루트 = 앱, `mock-supplier` = 공급사 Mock) |
 | 외부 호출 | Spring WebClient |
 | DB | H2 (실행·테스트 모두), Spring Data JPA |
 | 계층 | `controller → business → implement → dataaccess` + `vo` |
@@ -17,7 +17,7 @@
 | 도메인 검증 | VO 생성자에서 `AppException` |
 | 응답·에러 | `ApiResponse`, `AppException`, `ErrorType`, `ErrorCode`, `ApiControllerAdvice` |
 | 라이브러리 | Lombok (`lombok.config` 제약), springdoc-openapi |
-| 공급사 Mock 서버 | `mock/supplier` 패키지, `@Profile("supplier")`, 9090 포트 별도 프로세스 |
+| 공급사 Mock 서버 | 별도 Gradle 모듈 `mock-supplier`, 9090 포트 별도 프로세스 |
 | 기록 | 저장소가 원본. 근거·과정은 `JOURNAL.md`, 이슈에는 요약과 링크 |
 | 커밋 | `type[#이슈번호]: 설명`, 이슈는 사용자가 닫는다. JOURNAL·설계 기록은 해당 구현·테스트 커밋에 함께 넣는다 |
 | 테스트 작성 | `@DisplayName` 자연어가 명세. 정상·경계·예외 상황을 제시하고 사용자가 고른 것만 구현. 구현 로직을 보고 케이스·기댓값을 만들지 않음 |
@@ -46,17 +46,18 @@
 | 동기화 쓰기 배치 | JDBC 배치 `hibernate.jdbc.batch_size=50` + `order_updates=true`. 크기 50은 잠정값(공급사 목록 전체를 커밋 때 쓰므로 조회 단위와 무관). 서버형 DB로 옮기면 드라이버 멀티 row 재작성 지원·네트워크 지연·행 크기로 다시 정한다. `@UuidGenerator`(앱 생성 ID)라 INSERT도 배치된다(IDENTITY면 불가). `order_inserts`는 끈다: 연관 매핑이 없어 Hibernate가 FK 순서를 모르고, 숙소를 먼저 저장하므로 이미 종류별로 모여 있다 |
 | 타임아웃 | 연결 1s, 응답 3s, 검색 전체 예산 5s (`supplier.*`). 고객 체감 한계를 5초로 보고, 한 공급사가 늦어도 나머지로 5초 안에 응답. 커넥터(`HttpClientSettings`)에 연결·읽기, Mono `.timeout()`에 응답, `invokeAll(tasks, 예산)`에 전체. 예산 초과 태스크는 취소되고 `UNAVAILABLE/BUDGET_EXCEEDED` |
 | 부분 실패 표현 | 공급사 단위. 응답 `failures[]`에 (supplier, type, code) 한 건. 50개 묶음 중 일부만 실패해도 그 공급사를 실패로 표시하되 성공한 묶음의 상품은 그대로 응답 |
-| 동기화 시점 | 기동 시 1회(`ApplicationRunner`) + 매일 04:00(`@Scheduled`, `stay.sync.cron`) + 수동 `POST /api/v1/stays/sync`. 진입점은 `StaySyncScheduler`(controller 패키지). `stay.sync.enabled=false`로 끔(테스트·supplier 프로파일). 기동 시 공급사가 죽어 있어도 기동은 계속. 목록 호출 성공인데 비어 있으면 응답 이상으로 보고 warn 로그를 남긴 뒤 건너뜀(전체 비활성화 안 함) |
+| 동기화 시점 | 기동 시 1회(`ApplicationRunner`) + 매일 04:00(`@Scheduled`, `stay.sync.cron`) + 수동 `POST /api/v1/stays/sync`. 진입점은 `StaySyncScheduler`(controller 패키지). `stay.sync.enabled=false`로 끔(테스트). 기동 시 공급사가 죽어 있어도 기동은 계속. 목록 호출 성공인데 비어 있으면 응답 이상으로 보고 warn 로그를 남긴 뒤 건너뜀(전체 비활성화 안 함) |
 | 동기화 항목 오류 | 목록 응답 중 한 항목이라도 검증(`INVALID_SUPPLIER_STAY`)에 실패하면 그 공급사 동기화 전체를 건너뛰고 기존 DB 값을 유지한다. 잘못된 항목만 빼고 반영하는 방식은 채택하지 않음: 빠진 숙소가 목록에 없는 숙소로 처리돼 비활성화되면 응답 오류 때문에 판매 중인 숙소가 검색에서 사라진다. 목록 데이터는 잘 바뀌지 않아 다음 주기(최대 하루) 반영으로 충분. 검색 경로의 항목 단위 제외(매핑 없는 객실, 날짜 누락)는 저장이 없어 그대로 둔다 |
 | 동기화 저장 실패 격리 | 공급사마다 `StayManager.sync` 예외를 잡아 error 로그(예외 포함)를 남기고 다음 공급사로 진행한다. 트랜잭션이 공급사마다 분리돼 실패한 공급사만 롤백된다. DB 저장 재시도는 넣지 않음: 제약 위반 같은 결정적 오류는 같은 실패만 반복하고, 재시도를 다 써도 격리는 따로 필요하며, 내장 H2라 일시적 오류가 드물다. 재시도는 미결정 항목과 함께 정한다 |
 | 로그 형식 | `[카테고리 : 상세내용]: key=value \| key=value`로 통일(`CLAUDE.md`). 레벨은 정상 흐름 `info`, 예상된 실패 `warn`, 시스템 오류 `error`. 동기화를 건너뛸 때는 사유마다 로그를 남긴다: 목록 조회 실패·항목 검증 실패·빈 목록은 `warn`, 저장 실패·스케줄 실행 실패는 `error`(예외 포함) |
-| 외부 연동 패키지 | 공급사 연동 코드는 최상위 `com.trip.external.supplier`에 통째로 둔다: `SupplierClient` 인터페이스, `SupplierHttpCaller`·`SupplierErrors`, `SupplierCallException`·`SupplierFailureType`, `WebClientConfig`·`SupplierProperties`·`SupplierEndpoint`, 입력 모델 `Supplier`·`SupplierStay`·`SupplierRoomType`. 공급사별은 `a/`·`b/`에 Client, 코드 매핑, `dto/`. 의존은 도메인 → `external` 한 방향(Business·Manager·엔티티가 `external`을 import, `external`은 도메인을 import하지 않음). 입력 모델을 `stay/vo`에 두면 `stay ⇄ external` 순환이 생겨 `external`로 옮김. `stay/implement`에는 Manager만 남는다. Implement 안에서 분리, 인터페이스만 도메인에 두는 의존성 역전은 채택하지 않음 |
-| DTO 위치 | `external/supplier/{a,b}/dto` 공급사별 하위 패키지. 클래스명 접두어(`A*`, `B*`)는 유지 |
-| 공급사 코드 매핑 | 본문 코드가 있는 공급사는 전용 enum을 공급사 패키지에 둔다(`b/BResultCode`: 코드 → `SupplierFailureType`, 코드 없음 `MALFORMED`, 모르는 코드 `INTERNAL`). `ErrorType`과 합치지 않음: `ErrorType`은 우리 API 응답(HTTP 상태·메시지)용이고, 공급사 실패는 대부분 에러 응답이 되지 않으며(검색 `failures[]`, 동기화 로그), 공급사 코드가 전역 enum에 섞인다 |
-| 어댑터 구성 | `SupplierClient` 인터페이스(`supplier()`, `fetchStays()`. 재고·요금 `fetchOffers()`는 검색 구현 때 추가)와 `SupplierAClient`·`SupplierBClient`. Business는 `List<SupplierClient>`를 주입받아 공급사 분기 없음. 실패는 `SupplierCallException`(supplier, type, 원본 code). 공통 분류는 `SupplierErrors`(HTTP 상태 분류, 전송 오류 변환: `TIMEOUT`·`CONNECTION`·`BODY_TOO_LARGE`·`UNEXPECTED`). 신규 공급사 추가 = enum 값 + Client 구현체(`SupplierHttpCaller` 조합) + dto + `WebClientConfig` 빈 메서드 + yml `supplier.endpoints` |
+| 외부 연동 패키지 | 공급사 연동 코드는 최상위 `com.trip.supplier`에 두되 역할별 하위 패키지로 나눈다: 루트는 계약(`SupplierClient`·`Supplier`)만, `vo/`는 입력 모델(`SupplierStay`·`SupplierRoomType`), `exception/`은 `SupplierCallException`·`SupplierFailureType`·`SupplierErrors`, `infra/`는 `SupplierHttpCaller`·`SupplierProperties`·`SupplierEndpoint`. `WebClientConfig`는 설정 클래스이므로 `com.trip.config.supplier`로 옮겨 `SwaggerConfig`와 나란히 둔다. 공급사별은 `a/`·`b/`에 Client, 코드 매핑, `response/`. 의존은 도메인 → `supplier` 한 방향(Business·Manager·엔티티가 `supplier`를 import, `supplier`는 도메인을 import하지 않음). 입력 모델을 `stay/vo`에 두면 `stay ⇄ supplier` 순환이 생겨 `supplier`로 옮김. `stay/implement`에는 Manager만 남는다. Implement 안에서 분리, 인터페이스만 도메인에 두는 의존성 역전은 채택하지 않음. 이름은 `failure/`·`http/` 대신 `exception/`·`infra/` |
+| 공급사 예외 계층 | `SupplierCallException`은 `AppException`을 상속한다(별도 계층으로 두지 않음). `SupplierFailureType`의 각 값이 대응 `ErrorType`을 들고 있고(`SUPPLIER_BAD_REQUEST`~`SUPPLIER_MALFORMED`, `E2000`~`E2005`, 전부 502·WARN), 생성자가 `type.getErrorType()`을 `super`로 넘긴다. `data`에는 `supplier type code`를 담아 `ApiControllerAdvice`·로그에서 원본 코드를 본다. `AppException`에 `(ErrorType, data, cause)` 생성자를 추가했다. VO 검증 실패는 기존대로 `AppException(INVALID_SUPPLIER_STAY)`라서 `StaySyncService`는 `SupplierCallException`(호출 실패) → `AppException`(항목 검증) 순으로 잡는다 |
+| 공급사 응답 형식 위치 | `supplier/{a,b}/response` 공급사별 하위 패키지. 클래스명 접두어(`A*`, `B*`)는 유지. 지금 담긴 8개가 전부 응답 파싱용이고 요청 형식은 없어서, 잡동사니 이름인 `dto/` 대신 도메인의 `controller/request`·`controller/response` 관례와 같은 이름을 쓴다. 공급사 요청 형식을 객체로 만들 일이 생기면 그때 `request/`를 만든다 |
+| 공급사 코드 매핑 | 본문 코드가 있는 공급사는 전용 enum을 공급사 패키지에 둔다(`b/BResultCode`: 코드 → `SupplierFailureType`, 코드 없음 `MALFORMED`, 모르는 코드 `INTERNAL`). 공급사 코드 enum을 `ErrorType`과 합치지 않음: 공급사 코드가 전역 enum에 섞이고, 공급사 실패는 대부분 에러 응답이 되지 않는다(검색 `failures[]`, 동기화 로그). 공급사 코드 → `SupplierFailureType` → `ErrorType` 두 단계로 두어 공급사 코드는 `a/`·`b/` 안에 갇힌다 |
+| 어댑터 구성 | `SupplierClient` 인터페이스(`supplier()`, `fetchStays()`. 재고·요금 `fetchOffers()`는 검색 구현 때 추가)와 `SupplierAClient`·`SupplierBClient`. Business는 `List<SupplierClient>`를 주입받아 공급사 분기 없음. 실패는 `SupplierCallException`(supplier, type, 원본 code). 공통 분류는 `SupplierErrors`(HTTP 상태 분류, 전송 오류 변환: `TIMEOUT`·`CONNECTION`·`BODY_TOO_LARGE`·`UNEXPECTED`). 신규 공급사 추가 = enum 값 + Client 구현체(`SupplierHttpCaller` 조합) + `response/`(+ `toSupplierStay()`) + `config/supplier/WebClientConfig` 빈 메서드 + yml `supplier.endpoints` |
 | 정규화 | A: 총액 `Σ(nightlyRate+taxAmount)`, B: `totalPrice`. 예약 가능 수 = 기간 내 날짜별 최솟값. 요청 기간의 날짜가 응답에 빠지면 그 항목은 버리고 경고 로그(총액·재고를 만들 수 없음). `taxAmount`는 표준에 없음. 통화는 변환 없이 코드 그대로 전달(현재 KRW뿐) |
 | 검색 응답 | `stays[]`(stayId, stayName, roomTypeId, roomTypeName, maxOccupancy, availableRooms, available, supplier, breakfastIncluded, currency, totalPrice) + `failures[]`. 예약 불가는 `availableRooms=0`으로 노출하고 빼지 않는다 |
-| Mock | `mock/supplier` 패키지 `MockSupplierController`, `@Profile("supplier")`, `application-supplier.yaml`로 9090·인메모리 DB·동기화 off. 현재는 A·B 숙소 목록 고정 응답만 있다. 모드 전환(normal/error/no-response, `POST /control/{a|b}/mode?value=`)과 재고·요금 고정 날짜(2026-09-01~03) 응답은 검색 구현 때 추가 |
+| Mock | 별도 Gradle 모듈 `mock-supplier`(`MockSupplierApplication` + `MockSupplierController`, webmvc 스타터만). 자체 `application.yaml`로 9090. 운영 앱과 코드·의존성·산출물이 분리돼 프로파일과 기능 끄기 설정이 필요 없다. 루트 앱은 `mock-supplier`를 의존하지 않고 HTTP로만 호출한다. 현재는 A·B 숙소 목록 고정 응답만 있다. 모드 전환(normal/error/no-response, `POST /control/{a|b}/mode?value=`)과 재고·요금 고정 날짜(2026-09-01~03) 응답은 검색 구현 때 추가 |
 | 도메인 패키지 | `com.trip.stay` — 매핑과 검색을 한 도메인에 |
 | 트랜잭션 경계 | 매핑 조회만 짧은 read-only 트랜잭션, 공급사 호출은 트랜잭션 밖. `spring.jpa.open-in-view=false`. 가상 스레드는 스레드를 놓지 커넥션을 놓지 않으므로 둘 다 필요 |
 

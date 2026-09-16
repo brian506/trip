@@ -283,7 +283,7 @@ DB
 - 빈 본문과 깨진 본문을 나눈다: 본문이 없거나 JSON `null`이면 `EMPTY_BODY`, 파싱 실패면 `UNPARSEABLE`. Jackson은 빈 문자열에도 파싱 예외를 던져 그대로 두면 둘이 섞인다. 운영에서 "안 왔다"와 "이상하게 왔다"는 원인이 달라 구분했다.
 - A의 실패 본문이 JSON이 아니면(게이트웨이 HTML 등) 원본 코드는 상태 숫자로 대신한다. 실패 분류는 이미 상태 코드로 정해졌으므로 본문 때문에 판정이 흔들리지 않게 했다.
 - 전송 오류 변환 순서는 타임아웃 → 버퍼 한도 → 연결 오류 → 그 외(`UNEXPECTED`). 타임아웃·버퍼 한도는 연결 예외 안에 감싸여 올 수 있어 원인 체인을 먼저 본다. 예전에는 예상 못한 오류가 전부 `UNPARSEABLE`로 묶여 파싱 문제로 오인될 수 있어 `UNEXPECTED`로 분리했다.
-- 값의 옳고 그름은 VO가 판단한다: Client는 DTO의 null 숫자를 0으로 넘기기만 하고, 최대 인원 1 미만 검사는 `SupplierRoomType` 생성자 한곳에서 한다(`decisions.md` 도메인 검증).
+- 값의 옳고 그름은 VO가 판단한다: 응답 record는 null 숫자를 0으로 넘기기만 하고, 최대 인원 1 미만 검사는 `SupplierRoomType` 생성자 한곳에서 한다(`decisions.md` 도메인 검증).
 
 신규 공급사 추가 절차
 
@@ -291,13 +291,13 @@ DB
 
 | 순서 | 위치 | 할 일 |
 |------|------|------|
-| 1 | `external/supplier/Supplier` | enum 값 추가. 이름은 16자 이하(`stay.supplier VARCHAR(16)`, 엔티티 `length = 16`)이고 yml 키와 같아야 한다 |
+| 1 | `supplier/Supplier` | enum 값 추가. 이름은 16자 이하(`stay.supplier VARCHAR(16)`, 엔티티 `length = 16`)이고 yml 키와 같아야 한다 |
 | 2 | `application.yaml` | `supplier.endpoints.C`에 `base-url`, `api-key`. 빠지면 기동이 멈춘다 |
-| 3 | `external/supplier/WebClientConfig` | `supplierC` 빈 메서드 추가(`build(builder, properties, Supplier.C)`) |
-| 4 | `external/supplier/c/dto` | 응답 record. 접두어 `C*`. 빠질 수 있는 숫자는 `Integer` 같은 래퍼 타입 |
-| 5 | `external/supplier/c/SupplierCClient` | `@Component`, `implements SupplierClient`. 아래 체크리스트대로 작성. 본문 코드가 있으면 같은 패키지에 `CResultCode` enum |
-| 6 | `mock/supplier/MockSupplierController` | 로컬 실행용 C 응답 추가(`@Profile("supplier")` 유지) |
-| 7 | 테스트 | `external/supplier/c`에 MockWebServer로 정상·실패 분류 케이스 |
+| 3 | `config/supplier/WebClientConfig` | `supplierC` 빈 메서드 추가(`build(builder, properties, Supplier.C)`) |
+| 4 | `supplier/c/response` | 응답 record. 접두어 `C*`. 빠질 수 있는 숫자는 `Integer` 같은 래퍼 타입. `toSupplierStay()`로 VO 변환까지 맡는다 |
+| 5 | `supplier/c/SupplierCClient` | `@Component`, `implements SupplierClient`. 아래 체크리스트대로 작성. 본문 코드가 있으면 같은 패키지에 `CResultCode` enum |
+| 6 | `mock-supplier` 모듈의 `MockSupplierController` | 로컬 실행용 C 응답 추가 |
+| 7 | 테스트 | `supplier/c`에 MockWebServer로 정상·실패 분류 케이스 |
 
 `SupplierCClient` 작성 체크리스트
 
@@ -428,3 +428,82 @@ DB
 - 질문: 외부 호출 구현부와 비즈니스 로직이 같은 도메인 패키지에 있어 경계가 이상하다고 했다.
   - 처리: 수정
   - 이유: AI는 implement 안 분리, 인터페이스만 도메인에 두는 의존성 역전, 통째로 최상위 분리 세 가지를 제시했다. 통째로 분리를 골랐고, AI가 입력 모델을 도메인에 두면 순환이 생긴다고 짚어 입력 모델까지 `external`로 옮겼다. Mock 패키지 이름도 바꿨다.
+
+## Day 4 (2026-09-16)
+
+### Mock 서버 모듈 분리와 공급사 패키지 이름 정리
+
+**수행 내용**
+- 공급사 Mock 서버를 루트 앱에서 떼어 별도 Gradle 모듈 `mock-supplier`로 옮겼다.
+- 공급사 연동 패키지에서 `external` 한 단계를 빼 `com.trip.supplier`로 옮겼다.
+
+#### **의사결정**
+
+Mock 서버 모듈 분리
+
+- 상황: Mock이 루트 앱의 `mock/supplier` 패키지에 있고 `@Profile("supplier")`로 켜졌다. 고정 JSON 두 개를 주는 서버인데, 띄우면 JPA·H2·`schema.sql`·스케줄러가 전부 올라왔다. 그래서 `application-supplier.yaml`이 실제 앱 기능을 끄는 파일이 돼 있었다(인메모리 DB로 교체, `stay.sync.enabled=false`). `architecture.md`도 `mock` 패키지만 계층·품질 규칙 예외로 두고 있었다.
+- 채택: 별도 Gradle 모듈 `mock-supplier`. 자체 `@SpringBootApplication`과 `application.yaml`(9090)을 갖고 의존성은 webmvc 스타터 하나다. `@Profile`과 `application-supplier.yaml`은 없앴다.
+  - 근거: 결정적이었던 건 Mock이 앞으로 자란다는 점이다(`decisions.md` Mock 항목: 모드 전환 `POST /control/{a|b}/mode`, 재고·요금 응답을 검색 구현 때 추가). 지금 구조는 Mock에 기능이 붙을 때마다 "실제 앱의 무엇을 더 꺼야 하는가"를 함께 관리해야 한다. 모듈을 나누면 끌 것이 없다. 운영 jar에서 Mock 코드가 빠지고, 규칙 예외 범위도 패키지가 아니라 모듈 경계와 일치한다.
+- 비교: 현행 유지 — 드는 일이 없지만 위 비용이 계속 는다. 같은 모듈 + 별도 소스셋(`src/mock/java`) — 산출물 분리 효과는 같지만 Spring Boot 플러그인용 `BootRun`·`BootJar` 태스크를 손으로 등록해야 해 읽는 사람이 더 헤맨다.
+- 판단: 얻는 게 같으면 표준적인 쪽이 낫다고 보고 모듈 분리를 택했다. 대가로 빌드 스크립트가 하나 늘고, 실행 명령이 프로파일 인자에서 `./gradlew :mock-supplier:bootRun`으로 바뀐다.
+- 영향: `decisions.md`의 Build(단일 모듈 → 멀티 모듈)와 Mock 두 줄, `architecture.md` 패키지 트리·mock 섹션, `forbidden.md`, `review.md` 체크리스트, `CLAUDE.md` 명령어·구조를 고쳤다. 신규 공급사 추가 절차 표의 Mock 행 경로도 바꿨다.
+
+`external` 접두어 제거
+
+- 상황: `external`을 붙인 이유 중 하나가 "Mock 서버 패키지 이름이 `supplier`라 실제 연동 코드와 헷갈린다"였다(Day 3 기록). Mock이 별도 모듈로 나가면서 그 충돌이 사라졌다.
+- 채택: `com.trip.external.supplier` → `com.trip.supplier`. 파일 22개, import 56군데, 규칙 문서 6개를 함께 고쳤다.
+  - 근거: 이름이 막고 있던 충돌이 없어졌으므로 `external`은 경계를 가리키는 말로만 남는다. 그 경계는 이미 "도메인 → `supplier` 한 방향" 규칙 문장과 `review.md` 탐지 명령이 지키고 있어, 패키지 한 단계를 더 쓸 이유가 없다.
+- 비교: 유지 — 규칙 문장에 경계 성격이 이름으로 드러나고, 결제 게이트웨이 같은 다른 외부 연동이 붙으면 `external/` 아래 나란히 놓인다. 다만 그런 연동 계획은 지금 없다.
+- 판단: 예정에 없는 확장을 근거로 패키지 한 단계를 남기지 않는다. 다른 외부 연동이 실제로 생기면 그때 `external/`을 만들고 옮긴다.
+- 영향: 규칙 문장이 "도메인 → `supplier` 한 방향"으로 바뀌었다. 과거 JOURNAL 기록에 남은 `external/supplier` 경로는 그 시점의 결정이라 그대로 두고, 신규 공급사 추가 절차처럼 앞으로 볼 부분만 고쳤다.
+
+**AI 활용**
+- 질문: Mock 쪽을 따로 모듈로 파는 게 나은지 물었다.
+  - 처리: 수용
+  - 이유: AI는 현행 구조가 치르는 비용(앱 전체 컨텍스트 기동, 기능을 끄는 yaml, 운영 jar 포함, 규칙 예외)을 정리하고 선택지 셋을 트레이드오프 표로 냈다. 결정을 가르는 지점이 "Mock이 앞으로 자라는가"라고 짚었고, `decisions.md`에 모드 전환·재고·요금 추가가 이미 적혀 있어 분리를 택했다.
+- 질문: 모듈을 나눴으면 패키지 이름에서 `external`도 뺄 수 있지 않냐고 물었다.
+  - 처리: 거부
+  - 이유: AI는 "Mock과의 혼동"이라는 근거가 사라진 것은 인정하면서도, `external`이 의존 방향 규칙의 이름 역할을 하고 다른 외부 연동이 붙을 자리라는 이유로 유지를 권했다. 예정에 없는 확장을 위해 패키지 단계를 남길 이유가 없다고 보고 제거를 지시했다.
+
+### 공급사 패키지 역할별 분류와 예외 계층 통합
+
+**수행 내용**
+- `supplier` 루트에 평평하게 있던 11개 타입을 `vo/`·`exception/`·`infra/`로 나누고, `WebClientConfig`를 `config/supplier`로 옮겼다.
+- `SupplierCallException`을 `AppException` 하위로 합치고 공급사 실패에 `E2000`대 `ErrorType`을 붙였다.
+- 공급사 응답 형식 패키지 이름을 `dto/`에서 `response/`로 바꿨다.
+
+#### **의사결정**
+
+패키지 역할별 분류
+
+- 상황: `supplier` 루트 11개가 계약·입력 모델·실패 표현·실행 인프라 네 성격으로 섞여 있고, 구분은 `Supplier*` 접두어뿐이었다. 밖에서 실제로 import하는 건 5개고 나머지 6개는 내부 전용인데 그 경계가 드러나지 않았다. 검색 구현에서 `fetchOffers()`와 요금·재고 모델이 붙으면 더 는다.
+- 채택: 루트에 계약(`SupplierClient`·`Supplier`)만 남기고 `vo/`(입력 모델), `exception/`(실패 표현), `infra/`(실행 인프라)로 나눴다. 설정 클래스인 `WebClientConfig`는 `com.trip.config.supplier`로 옮겨 `SwaggerConfig`와 나란히 뒀다.
+  - 근거: 루트에 남은 것이 곧 도메인이 써도 되는 공개 면이 된다. 경계를 문장이 아니라 패키지로 드러낸다.
+- 비교: 현행 유지 — 11개는 아직 한 화면에 들어오지만 검색 구현 때 어차피 나눠야 한다. `exception/`만 분리 — 이동은 가장 작지만 루트에 8개가 남아 성격이 다시 섞인다.
+- 판단: 이름은 `failure/`·`http/` 대신 `exception/`·`infra/`로 정했다. `SupplierProperties`·`SupplierEndpoint`는 설정값이지만 실행기와 함께 쓰이므로 `infra/`에 두고, 빈 등록만 `config/`로 뺐다.
+
+예외 계층 통합
+
+- 상황: 같은 패키지 안에서 호출 실패는 독립 계층(`SupplierCallException extends RuntimeException`), 항목 검증 실패는 `AppException`으로 갈려 있었다. `StaySyncService`가 catch를 두 번 했고, `supplier`가 `support.exception`을 import하는 것도 그 때문이었다.
+- 채택: `SupplierCallException extends AppException`. `SupplierFailureType`의 여섯 값이 각각 `ErrorType`(`SUPPLIER_BAD_REQUEST`~`SUPPLIER_MALFORMED`, `E2000`~`E2005`, 모두 502·WARN)을 들고, 생성자가 그것을 `super`로 넘긴다. `AppException`에는 `(ErrorType, data, cause)` 생성자를 더했다. 원인 예외와 원본 코드를 함께 보존할 생성자가 없었기 때문이다.
+  - 근거: 공급사 실패도 결국 우리 API의 실패로 표현될 수 있어야 하고, 그 통로는 `ErrorType` 하나뿐이다.
+- 비교: 실패 분류 전체에 `ErrorType` 하나만 두는 안 — enum 중복이 없는 대신 응답·로그에서 코드만으로는 원인이 갈리지 않는다. 별개 계층 유지 — catch가 둘로 남고 `INVALID_SUPPLIER_STAY`의 502는 나갈 경로가 없는 채로 남는다.
+- 판단: 코드만 보고 원인이 갈리는 쪽을 택해 `SupplierFailureType`별로 `ErrorType`을 뒀다. 공급사 원본 코드는 `ErrorType`에 섞지 않고 `AppException`의 `data`에 `supplier type code` 문자열로 담는다. VO 검증 실패는 성격이 달라 `INVALID_SUPPLIER_STAY`로 남겼고, `StaySyncService`는 구체 예외를 먼저 잡는 순서를 유지한다.
+
+응답 형식 패키지 이름
+
+- 상황: `supplier/{a,b}/dto`에 든 8개가 전부 응답 파싱용이고 요청 형식은 하나도 없었다. 도메인 쪽은 이미 `controller/request`·`controller/response`로 나눠 쓰고 있어 관례가 프로젝트 안에서 두 갈래였다.
+- 채택: `dto/` → `response/`.
+  - 근거: 담긴 것이 전부 응답인데 이름만 무엇이든 담는 자루였다.
+- 판단: 공급사 요청을 객체로 만들 일이 생기면 그때 `request/`를 만든다. 재고·요금 API는 넘길 파라미터가 적어 객체 없이 붙을 가능성이 높다.
+
+**AI 활용**
+- 질문: `supplier` 안이 분류가 없어 보이는데 예외 같은 건 `support`로 옮겨도 되지 않냐고 물었다.
+  - 처리: 수정
+  - 이유: AI는 `support`가 도메인을 모르는 공통 기반이라 `SupplierCallException`을 옮기면 `support → supplier` 역참조가 생긴다며 반대했고, 대신 같은 패키지 안에서 예외가 두 갈래인 것이 진짜 문제라고 짚었다. 그 진단은 받아들이되 패키지 이름은 AI가 낸 `failure/`·`http/` 대신 `exception/`·`infra/`로 바꿔 지시했고, `WebClientConfig`는 설정이니 `config`로 빼게 했다.
+- 질문: 공급사 DTO가 도메인 계층으로 새어 나가고 있는 것 아니냐고 물었다.
+  - 처리: 거부
+  - 이유: AI가 리뷰 게이트의 탐지 명령으로 확인한 결과 도메인은 `SupplierStay` 같은 표준 모델만 참조하고 있었다. 다만 그 과정에서 `dto/` 안이 전부 응답 형식이라는 점이 드러나 패키지 이름만 `response/`로 바꿨다.
+- 질문: AI가 제안한 코드 개선 넷 중 `call()`의 null 방어와 A·B Client 매핑 중복 제거만 골랐다.
+  - 처리: 수정
+  - 이유: null 방어는 `block()`이 빈 값을 주면 raw NPE가 스케줄러까지 올라가 남은 공급사 동기화까지 멈춘다는 근거가 있었다. 매핑 중복 제거는 변환을 응답 record로 내려 Client에 요청 조립과 판정만 남기는 쪽이 이미 정한 역할 분담과 맞았다. `maxOccupancy`의 null 처리와 주석·네이밍 정리는 근거가 취향에 가까워 두었다.
