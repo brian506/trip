@@ -53,16 +53,18 @@ git log -p HEAD --not --remotes -- src/main build.gradle settings.gradle lombok.
 - [ ] JPA 엔티티가 메서드 파라미터로 계층을 넘나들지 않는가 (VO의 `from(Entity)`는 예외)
 
 ### [공급사 연동 경계] 🔴 Critical
-- [ ] 공급사 고유 요청·응답 타입(`external/supplier/{a,b}/dto`)과 공급사 코드 매핑이 해당 공급사 하위 패키지 밖에서 import되지 않는가
-  - 탐지: `grep -rn --include='*.java' 'import com\.trip\.external\.supplier\.[ab]\.' src/main/java | grep -v '/external/supplier/[ab]/'`
-- [ ] `external` 패키지가 도메인 패키지를 import하지 않는가
-  - 탐지: `grep -rn --include='*.java' 'import com\.trip\.stay\.' src/main/java/com/trip/external`
+- [ ] 공급사 고유 응답 타입(`supplier/{a,b}/response`)과 공급사 코드 매핑이 해당 공급사 하위 패키지 밖에서 import되지 않는가
+  - 탐지: `grep -rn --include='*.java' 'import com\.trip\.supplier\.[ab]\.' src/main/java | grep -v '/supplier/[ab]/'`
+- [ ] `supplier` 패키지가 도메인 패키지를 import하지 않는가
+  - 탐지: `grep -rn --include='*.java' 'import com\.trip\.stay\.' src/main/java/com/trip/supplier`
 - [ ] Business·Controller에 공급사 종류에 따른 분기가 없는가
 
-### [mock 패키지 — Mock 서버] 🔴 Critical
-- [ ] 애플리케이션 코드가 `com.trip.mock`을 import하지 않는가
-  - 탐지: `grep -rn --include='*.java' 'import com\.trip\.mock\.' src/main/java | grep -v '/mock/'`
-- [ ] `mock` 패키지의 모든 빈에 `@Profile("supplier")`가 있는가
+### [mock-supplier 모듈 — Mock 서버] 🔴 Critical
+- [ ] 루트 앱이 `com.trip.mock`을 import하지 않는가
+  - 탐지: `grep -rn --include='*.java' 'import com\.trip\.mock\.' src/main/java src/test/java`
+- [ ] 루트 `build.gradle`에 `project(':mock-supplier')` 의존성이 없는가
+  - 탐지: `grep -n 'mock-supplier' build.gradle`
+- [ ] Mock 서버 코드가 `src/main/java`가 아니라 `mock-supplier/`에 있는가
 
 ### [Implement 역할] 🟡 Warning
 - [ ] CRUD가 저장소 단위 Manager 하나에 모여 있는가. Reader·Writer·Validator 클래스가 새로 생기지 않았는가

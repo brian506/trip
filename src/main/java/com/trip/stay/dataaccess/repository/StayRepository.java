@@ -1,7 +1,7 @@
 package com.trip.stay.dataaccess.repository;
 
 import com.trip.stay.dataaccess.entity.Stay;
-import com.trip.external.supplier.Supplier;
+import com.trip.supplier.Supplier;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

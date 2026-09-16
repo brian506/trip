@@ -11,18 +11,22 @@ Controller → Business(Service) → Implement → DataAccess
 - 역방향 참조와 계층 건너뛰기를 금지한다.
 - Business는 Repository를 직접 참조하지 않는다.
 - Implement 계층 안의 협력은 허용한다.
-- 도메인의 모든 계층은 `external` 패키지를 참조할 수 있다. `external`은 도메인 패키지를 참조하지 않는다.
+- 도메인의 모든 계층은 `supplier` 패키지를 참조할 수 있다. `supplier`는 도메인 패키지를 참조하지 않는다.
 
 ## 패키지 구조
 
 ```
 com.trip/
 ├── common/controller/   # ApiControllerAdvice
-├── config/              # Swagger 등 공통 설정
+├── config/              # 공통 설정
+│   ├── swagger/         # SwaggerConfig
+│   └── supplier/        # WebClientConfig (공급사별 WebClient 빈)
 ├── support/             # ApiResponse, AppException, ErrorType, ErrorCode
-├── external/supplier/   # 외부 공급사 연동 (인터페이스·구현·설정·입력 모델 전부)
-│   ├── a/  b/           # 공급사별 Client, 코드 매핑, dto/
-├── mock/supplier/       # 공급사 Mock 서버 (supplier 프로파일 전용)
+├── supplier/            # 외부 공급사 연동 — 루트에는 계약(SupplierClient, Supplier)만
+│   ├── vo/              # 도메인에 넘기는 입력 모델 (SupplierStay, SupplierRoomType)
+│   ├── exception/       # SupplierCallException, SupplierFailureType, SupplierErrors
+│   ├── infra/           # SupplierHttpCaller, SupplierProperties, SupplierEndpoint
+│   ├── a/  b/           # 공급사별 Client, 코드 매핑, response/
 └── {domain}/            # 현재 stay
     ├── controller/      # REST Controller
     │   ├── request/
@@ -49,17 +53,30 @@ com.trip/
 
 ## 외부 공급사 연동 경계
 
-- 외부 공급사 연동 코드는 `external/supplier`에 모은다: `SupplierClient` 인터페이스, `SupplierHttpCaller`·`SupplierErrors`, `SupplierCallException`·`SupplierFailureType`, 설정(`WebClientConfig`·`SupplierProperties`), 입력 모델(`Supplier`·`SupplierStay`·`SupplierRoomType`).
-- 공급사별 코드는 하위 패키지(`a/`, `b/`)에 둔다: Client, 공급사 코드 → 내부 분류 매핑(예: `BResultCode`), `dto/`.
-- 공급사 고유의 요청·응답 형식과 코드는 공급사 하위 패키지 밖으로 나가지 않는다. Client에서 `external/supplier`의 표준 모델로 변환해 반환한다.
+- 외부 공급사 연동 코드는 `supplier`에 모으고 역할별로 나눈다: 계약(`SupplierClient`·`Supplier`)은 루트, 입력 모델은 `vo/`, 실패 표현은 `exception/`, 실행 인프라는 `infra/`(`SupplierHttpCaller`·`SupplierProperties`·`SupplierEndpoint`).
+- 공급사 WebClient 빈 등록(`WebClientConfig`)만 `config/supplier`에 둔다. 설정 클래스는 `config`에 모은다.
+- 공급사별 코드는 하위 패키지(`a/`, `b/`)에 둔다: Client, 공급사 코드 → 내부 분류 매핑(예: `BResultCode`), 응답 형식은 `response/`.
+- 공급사 응답 형식 → VO 변환은 각 응답 record의 `toSupplierStay()`·`toSupplierRoomType()`가 맡는다. Client는 요청 조립과 응답 판정만 한다.
+- 공급사 호출 실패는 `SupplierCallException`(`AppException` 하위)으로 던진다. `SupplierFailureType`이 대응 `ErrorType`(`E2000`~)을 들고 있어 `ApiControllerAdvice`가 그대로 처리한다.
+- 공급사 고유의 요청·응답 형식과 코드는 공급사 하위 패키지 밖으로 나가지 않는다. Client에서 `supplier`의 표준 모델로 변환해 반환한다.
 - Business와 Controller는 공급사 종류에 따라 분기하지 않는다. 공급사별 차이는 해당 Client 안에서 흡수한다.
 
-## mock 패키지 (공급사 Mock 서버)
+## mock-supplier 모듈 (공급사 Mock 서버)
 
-- 외부 공급사를 흉내 내는 Mock 서버 코드는 `mock/supplier` 패키지에만 둔다.
-- `mock` 패키지의 모든 빈에 `@Profile("supplier")`를 붙인다. 기본 프로파일로 뜬 애플리케이션에 등록되면 안 된다.
-- 애플리케이션 코드는 `mock` 패키지를 import하지 않는다. 연동은 HTTP로만 한다.
-- `mock` 패키지는 계층 규칙과 코드 품질 규칙의 적용 대상이 아니다.
+- 외부 공급사를 흉내 내는 Mock 서버 코드는 별도 Gradle 모듈 `mock-supplier`에만 둔다. 루트 앱 소스(`src/main/java`)에 두지 않는다.
+
+```
+mock-supplier/
+├── build.gradle                                  # webmvc 스타터만
+└── src/main/
+    ├── java/com/trip/mock/supplier/              # MockSupplierApplication, MockSupplierController
+    └── resources/application.yaml                # server.port: 9090
+```
+
+- 루트 앱은 `mock-supplier`를 의존성으로 추가하지 않고, import도 하지 않는다. 연동은 HTTP로만 한다(`supplier.endpoints.*.base-url`).
+- Mock은 자체 `@SpringBootApplication`으로 뜨는 독립 프로세스다. 프로파일로 빈을 거르지 않으므로 `@Profile`을 붙이지 않는다.
+- Mock에 필요한 의존성은 `mock-supplier/build.gradle`에만 추가한다. 루트 `build.gradle`에 넣지 않는다.
+- `mock-supplier` 모듈은 계층 규칙과 코드 품질 규칙의 적용 대상이 아니다.
 
 ## VO
 

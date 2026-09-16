@@ -25,6 +25,7 @@ throw new AppException(ErrorType.INVALID_STAY_PERIOD);
 |------|------|
 | `E400`, `E409`, `E429`, `E500` | 공통 |
 | `E1000`~`E1999` | `stay` 도메인 |
+| `E2000`~`E2999` | 공급사 연동(`supplier`) |
 
 ## 새 에러 추가 절차
 

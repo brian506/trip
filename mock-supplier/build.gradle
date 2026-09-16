@@ -1,0 +1,23 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot'
+	id 'io.spring.dependency-management'
+}
+
+group = 'com.trip'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+// 고정 응답을 주는 HTTP 서버다. 운영 앱의 JPA·WebClient·Lombok은 쓰지 않는다.
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+}

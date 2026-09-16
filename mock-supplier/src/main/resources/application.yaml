@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: mock-supplier
+
+# 운영 앱(8080)과 같이 띄우므로 포트를 나눈다.
+server:
+  port: 9090
