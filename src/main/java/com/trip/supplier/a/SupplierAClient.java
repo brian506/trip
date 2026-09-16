@@ -8,7 +8,7 @@ import com.trip.supplier.a.response.AHotelsResponse;
 import com.trip.supplier.exception.SupplierCallException;
 import com.trip.supplier.exception.SupplierErrors;
 import com.trip.supplier.exception.SupplierFailureType;
-import com.trip.supplier.infra.SupplierHttpCaller;
+import com.trip.supplier.global.SupplierHttpCaller;
 import com.trip.supplier.vo.SupplierStay;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
