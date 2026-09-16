@@ -1,4 +1,4 @@
-package com.trip.supplier.infra;
+package com.trip.supplier.global;
 
 import com.trip.supplier.Supplier;
 import java.time.Duration;
@@ -9,7 +9,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record SupplierProperties(
         Map<Supplier, SupplierEndpoint> endpoints,
         Duration connectTimeout,
-        Duration responseTimeout
+        Duration responseTimeout,
+        int maxConnections,
+        Duration pendingAcquireTimeout,
+        Duration maxIdleTime,
+        Duration searchBudget
 ) {
 
     public SupplierEndpoint connectEndpoint(Supplier supplier) {

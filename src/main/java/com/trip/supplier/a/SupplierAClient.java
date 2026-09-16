@@ -2,14 +2,19 @@ package com.trip.supplier.a;
 
 import com.trip.supplier.Supplier;
 import com.trip.supplier.SupplierClient;
+import com.trip.supplier.a.response.AAvailabilityResponse;
 import com.trip.supplier.a.response.AErrorResponse;
 import com.trip.supplier.a.response.AHotel;
 import com.trip.supplier.a.response.AHotelsResponse;
 import com.trip.supplier.exception.SupplierCallException;
 import com.trip.supplier.exception.SupplierErrors;
 import com.trip.supplier.exception.SupplierFailureType;
-import com.trip.supplier.infra.SupplierHttpCaller;
+import com.trip.supplier.global.SupplierHttpCaller;
+import com.trip.supplier.vo.SupplierRoom;
 import com.trip.supplier.vo.SupplierStay;
+import com.trip.supplier.vo.SupplierStayCodes;
+import com.trip.support.vo.Guests;
+import com.trip.support.vo.StayPeriod;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
@@ -43,6 +48,23 @@ public class SupplierAClient implements SupplierClient {
             throw new SupplierCallException(SUPPLIER, SupplierFailureType.MALFORMED, "EMPTY_BODY");
         }
         return response.items().stream().map(AHotel::toSupplierStay).toList();
+    }
+
+    @Override
+    public List<SupplierRoom> fetchRooms(StayPeriod period, Guests guests, SupplierStayCodes stayCodes) {
+        AAvailabilityResponse response = caller.call(SUPPLIER, webClient.get().uri(builder -> builder
+                        .path("/a/v1/availability")
+                        .queryParam("hotelCodes", stayCodes.joined())
+                        .queryParam("checkIn", period.checkIn())
+                        .queryParam("checkOut", period.checkOut())
+                        .queryParam("adults", guests.adults())
+                        .queryParam("children", guests.children())
+                        .build()),
+                (status, body) -> read(status, body, AAvailabilityResponse.class));
+        if (response.items() == null) {
+            throw new SupplierCallException(SUPPLIER, SupplierFailureType.MALFORMED, "EMPTY_BODY");
+        }
+        return response.toSupplierRooms(period);
     }
 
     // HTTP 상태로 실패를 분류하고 본문 error 코드를 원본 코드로 남긴다. 성공이면 본문을 type으로 읽는다.

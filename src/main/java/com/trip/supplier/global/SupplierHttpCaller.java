@@ -1,4 +1,4 @@
-package com.trip.supplier.infra;
+package com.trip.supplier.global;
 
 import com.trip.supplier.Supplier;
 import com.trip.supplier.exception.SupplierCallException;

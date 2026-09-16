@@ -9,9 +9,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-// 동기화 진입점. 기동 시 1회, 이후 매일 새벽(stay.sync.cron)에 돈다.
-// 숙소 목록은 자주 바뀌지 않으므로 검색 트래픽과 무관한 고정 주기로 갱신한다.
-// 기동 시 공급사가 죽어 있어도 기동은 계속된다. 매핑이 비면 검색은 빈 결과를 돌려준다.
+
 @Slf4j
 @Component
 @RequiredArgsConstructor

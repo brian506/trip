@@ -42,6 +42,7 @@ out/
 ### Secrets / local-only ###
 .env
 .claude/settings.local.json
+.claude/references/decisions.md
 .githooks/forbidden-words.local
 
 ### Source documents (never commit) ###

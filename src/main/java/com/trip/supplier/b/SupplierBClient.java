@@ -5,11 +5,16 @@ import com.trip.supplier.SupplierClient;
 import com.trip.supplier.b.response.BPropertiesData;
 import com.trip.supplier.b.response.BProperty;
 import com.trip.supplier.b.response.BResponse;
+import com.trip.supplier.b.response.BSearchData;
 import com.trip.supplier.exception.SupplierCallException;
 import com.trip.supplier.exception.SupplierErrors;
 import com.trip.supplier.exception.SupplierFailureType;
-import com.trip.supplier.infra.SupplierHttpCaller;
+import com.trip.supplier.global.SupplierHttpCaller;
+import com.trip.supplier.vo.SupplierRoom;
 import com.trip.supplier.vo.SupplierStay;
+import com.trip.supplier.vo.SupplierStayCodes;
+import com.trip.support.vo.Guests;
+import com.trip.support.vo.StayPeriod;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
@@ -23,6 +28,8 @@ public class SupplierBClient implements SupplierClient {
 
     private static final Supplier SUPPLIER = Supplier.B;
     private static final TypeReference<BResponse<BPropertiesData>> PROPERTIES_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<BResponse<BSearchData>> SEARCH_TYPE = new TypeReference<>() {
     };
 
     private final WebClient webClient;
@@ -48,7 +55,23 @@ public class SupplierBClient implements SupplierClient {
         return data.items().stream().map(BProperty::toSupplierStay).toList();
     }
 
-    // HTTP 상태 → 본문 파싱 → 본문 resultCode 순으로 실패를 본다. 성공인데 data가 없으면 MALFORMED.
+    @Override
+    public List<SupplierRoom> fetchRooms(StayPeriod period, Guests guests, SupplierStayCodes stayCodes) {
+        BSearchData data = caller.call(SUPPLIER, webClient.get().uri(builder -> builder
+                        .path("/b/api/search")
+                        .queryParam("propertyIds", stayCodes.joined())
+                        .queryParam("checkIn", period.checkIn())
+                        .queryParam("checkOut", period.checkOut())
+                        .queryParam("adults", guests.adults())
+                        .queryParam("children", guests.children())
+                        .build()),
+                (status, body) -> read(status, body, SEARCH_TYPE));
+        if (data.items() == null) {
+            throw new SupplierCallException(SUPPLIER, SupplierFailureType.MALFORMED, "EMPTY_BODY");
+        }
+        return data.toSupplierRooms(period);
+    }
+
     private <T> T read(HttpStatusCode status, String body, TypeReference<BResponse<T>> type) {
         if (status.isError()) {
             throw new SupplierCallException(SUPPLIER, SupplierErrors.classify(status), String.valueOf(status.value()));

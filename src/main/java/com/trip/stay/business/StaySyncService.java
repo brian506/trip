@@ -31,7 +31,7 @@ public class StaySyncService {
             supplierStays = client.fetchStays();
         } catch (SupplierCallException e) {
             log.warn("[숙소 동기화 : 목록 조회 실패]: supplier={} | type={} | code={}",
-                    e.getSupplier(), e.getType(), e.getCode());
+                    e.getSupplier(), e.getType(), e.getCode(), e);
             return;
         } catch (AppException e) {
             log.warn("[숙소 동기화 : 항목 검증 실패]: supplier={} | detail={}", client.supplier(), e.getData());

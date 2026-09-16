@@ -8,6 +8,7 @@ public enum BResultCode {
     BAD_REQUEST("E400", SupplierFailureType.BAD_REQUEST),
     AUTH("E401", SupplierFailureType.AUTH),
     RATE_LIMITED("E429", SupplierFailureType.RATE_LIMITED),
+    INTERNAL("E500", SupplierFailureType.INTERNAL),
     UNAVAILABLE("E503", SupplierFailureType.UNAVAILABLE);
 
     private final String code;
@@ -29,3 +30,6 @@ public enum BResultCode {
                 .orElse(SupplierFailureType.INTERNAL);
     }
 }
+/**
+ * 공급사 별 resultCode를 내 서비스 ErrorCode에 따로 못 넣나?
+ */

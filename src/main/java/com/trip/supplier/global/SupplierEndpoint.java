@@ -1,4 +1,4 @@
-package com.trip.supplier.infra;
+package com.trip.supplier.global;
 
 public record SupplierEndpoint(String baseUrl, String apiKey) {
 }

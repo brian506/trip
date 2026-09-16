@@ -60,7 +60,6 @@ public class ApiControllerAdvice {
         return new ResponseEntity<>(ApiResponse.error(ErrorType.DEFAULT_ERROR, null), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // 같은 필드에 제약이 여러 개 걸리면 첫 사유만 남긴다.
     private Map<String, String> fieldErrors(MethodArgumentNotValidException e) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
         for (FieldError error : e.getBindingResult().getFieldErrors()) {
@@ -86,9 +85,9 @@ public class ApiControllerAdvice {
 
         switch (e.getErrorType().getLogLevel()) {
             case ERROR -> log.error("[AppException]: class={} | method={} | line={} | status={} | errorCode={} | message={} | data={}",
-                    origin.getClassName(), origin.getMethodName(), origin.getLineNumber(), status, errorCode, e.getMessage(), e.getData());
+                    origin.getClassName(), origin.getMethodName(), origin.getLineNumber(), status, errorCode, e.getMessage(), e.getData(), e);
             case WARN -> log.warn("[AppException]: class={} | method={} | line={} | status={} | errorCode={} | message={} | data={}",
-                    origin.getClassName(), origin.getMethodName(), origin.getLineNumber(), status, errorCode, e.getMessage(), e.getData());
+                    origin.getClassName(), origin.getMethodName(), origin.getLineNumber(), status, errorCode, e.getMessage(), e.getData(), e);
             default -> log.info("[AppException]: class={} | method={} | line={} | status={} | errorCode={} | message={} | data={}",
                     origin.getClassName(), origin.getMethodName(), origin.getLineNumber(), status, errorCode, e.getMessage(), e.getData());
         }

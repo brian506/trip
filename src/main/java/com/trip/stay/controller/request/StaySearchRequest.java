@@ -1,7 +1,7 @@
 package com.trip.stay.controller.request;
 
-import com.trip.stay.vo.Guests;
-import com.trip.stay.vo.StayPeriod;
+import com.trip.support.vo.Guests;
+import com.trip.support.vo.StayPeriod;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
