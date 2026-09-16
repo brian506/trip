@@ -19,6 +19,8 @@ throw new AppException(ErrorType.INVALID_STAY_PERIOD);
 { "resultType": "ERROR", "data": null, "error": { "errorCode": "E400", "message": "...", "data": null } }
 ```
 
+`error.data`에는 구조체를 담아도 된다. 검증 실패는 `{필드: 사유}` Map을, 공급사 전체 실패(`SUPPLIER_ALL_FAILED`)는 `List<SupplierFailure>`를 담는다.
+
 ## 코드 범위
 
 | 범위 | 대상 |

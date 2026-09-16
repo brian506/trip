@@ -507,3 +507,159 @@ Mock 서버 모듈 분리
 - 질문: AI가 제안한 코드 개선 넷 중 `call()`의 null 방어와 A·B Client 매핑 중복 제거만 골랐다.
   - 처리: 수정
   - 이유: null 방어는 `block()`이 빈 값을 주면 raw NPE가 스케줄러까지 올라가 남은 공급사 동기화까지 멈춘다는 근거가 있었다. 매핑 중복 제거는 변환을 응답 record로 내려 Client에 요청 조립과 판정만 남기는 쪽이 이미 정한 역할 분담과 맞았다. `maxOccupancy`의 null 처리와 주석·네이밍 정리는 근거가 취향에 가까워 두었다.
+
+### #13 통합 검색 API
+
+**수행 내용**
+- 검색 API의 전체 흐름을 7단계(요청 검증 → 매핑 조회 → 코드 묶기 → 병렬 호출 → 정규화 → 결과 조립 → 응답)로 나누고, 단계마다 정할 항목을 분리했다.
+- 요청 검증 규칙을 정하고 `StaySearchRequest`, `StayPeriod`, `Guests`와 `GET /api/v1/stays/search`를 구현했다.
+- 응답·결과 VO(`SearchedRoom`, `SupplierFailure`, `StaySearchResult`)를 만들고, Service는 뼈대만 두었다.
+- 검색 흐름의 이름을 room 계열로 통일하고, 입력 Command record와 출력 Response record를 모두 없앴다.
+- `SupplierFailure`를 `supplier/vo`로 옮기고 `SupplierCallException.toFailure()`로 만들게 했다.
+
+#### **의사결정**
+
+검색 조건 제약
+
+- 상황: 날짜와 인원에 어떤 상한·하한을 둘지 정해야 했다.
+- 채택: 체크인은 오늘 이후, 숙박은 최대 30박, 성인은 1명 이상, 아동은 생략 시 0.
+  - 근거: 지난 날짜로는 예약할 수 없으니 과거 체크인은 받을 이유가 없다. 숙박일수 상한은 응답 크기와 직결된다. 재고·요금 응답은 숙소 수 × 객실 수 × 숙박일수로 커지는데 WebClient 기본 버퍼가 256KB라, 상한이 없으면 긴 기간 검색이 통째로 실패한다.
+- 판단: 상한을 한 달로 잡았다. 숫자 근거는 없지만 검색 UI에서 흔히 쓰는 범위이고, 없는 것보다는 낫다고 봤다.
+
+아동 기본값을 채우는 위치
+
+- 상황: `children`이 없을 때 0으로 채우는 코드를 처음에 `StaySearchRequest.toCommand()`에 뒀다.
+- 채택: `Guests` 생성자가 채운다.
+  - 근거: "아동을 안 적으면 0명"은 변환이 아니라 해석이고, 그건 도메인 규칙이다. VO가 들고 있어야 다른 진입점에서 `Guests`를 만들어도 같은 규칙이 적용된다. Request는 변환만 한다는 기존 규칙과도 맞다.
+- 비교: Request에서 채우기 — `Guests`가 "아동 미지정"과 "아동 0명"을 구분할 수 있지만, 지금 그 구분이 필요한 곳이 없다.
+- 판단: 역할 책임으로 갈랐다. AI는 Request 쪽을 유지하자고 했는데 근거가 약해 뒤집었다.
+
+요청 검증을 어디에 둘지
+
+- 상황: 기존 규칙은 "도메인 제약은 VO에서만, Request는 변환만"이었다. 그런데 성인 1명 이상 같은 제약은 실무에서 보통 Request에 Bean Validation으로 둔다.
+- 채택: 둘 다 둔다. 필드 하나로 판단되는 제약(날짜 필수, 성인 1 이상, 아동 0 이상)은 Request에 `@Valid`로, 필드 간 규칙(체크아웃 순서, 과거 날짜, 30박 상한)과 불변식은 VO 생성자에.
+  - 근거: 지키는 대상이 다르다. Request는 HTTP 계약이라 오류를 필드별로 한 번에 돌려주고 OpenAPI 스키마에 제약이 드러나 프론트가 백엔드 코드를 안 읽어도 된다. VO는 객체 불변식이라 스케줄러·테스트처럼 HTTP를 거치지 않는 경로를 막는다. 한쪽만 두면 각각 그 이점을 잃는다.
+- 비교:
+  - VO만 유지 — 규칙을 안 고쳐도 되지만 오류가 한 건씩만 가고 스키마에 제약이 안 보인다.
+  - Request만 — 검증이 한 곳이지만 "VO 생성자 검증" 결정을 뒤집게 되고, 필드 간 규칙은 클래스 레벨 커스텀 제약이 필요해 "별도 Validator 금지" 규칙과 충돌한다.
+- 판단: 어느 쪽을 골라도 필드 간 규칙은 VO에 남아서 검증이 완전히 한 곳에 모이지 않는다. 그렇다면 선을 "필드 하나짜리는 Request, 필드 간 규칙은 VO"로 긋는 게 자연스럽다고 봤다. 대가로 `patterns.md`·`forbidden.md`의 "Request에서 다시 검사 금지" 규칙을 고쳤다.
+
+`@ParameterObject` 제거
+
+- 상황: 쿼리 파라미터를 객체로 받는 데 springdoc의 `@ParameterObject`를 붙여 뒀다.
+- 채택: `@Valid @ModelAttribute`만 쓴다.
+  - 근거: 바인딩은 Spring의 `@ModelAttribute`가 하고 `@ParameterObject`는 Swagger 문서를 펼치는 역할만 한다. 역할이 섞여 보이는 애노테이션을 빼고 표준 Spring 애노테이션으로 의도를 드러냈다.
+- 판단: 대가로 Swagger UI에서 파라미터가 `request` 하나로 그려져 이 API를 직접 호출해 볼 수 없다. 문서 편의보다 애노테이션이 적은 쪽을 택했다.
+
+검색 결과 단위의 이름
+
+- 상황: 검색 결과 한 건을 `StayOffer`로, 응답 필드를 `stays[]`로 두고 있었다. 담기는 건 "이 기간·이 인원으로 팔 수 있는 객실 1건 + 총액 + 잔여 수"인데, 이름은 숙소를 가리키고 원소는 객실이라 한 숙소에 객실이 3개면 `stays`에 같은 숙소가 3번 나온다.
+- 채택: 도메인 VO `SearchedRoom`, 응답 record `SearchedRoomResponse`, 필드 `rooms[]`. 공급사 쪽도 `SupplierRoom`·`searchRooms()`로 맞춘다.
+  - 근거: 단위가 객실이라는 사실을 이름에 박아 필드명과 원소가 어긋나지 않게 했다. 공급사 입력부터 응답까지 room 한 단어로 이어져 계층을 넘어도 같은 것을 가리킨다는 게 보인다.
+- 비교:
+  - `Offer` 유지 — 바꿀 게 없지만 숙소 단위인지 객실 단위인지 이름에서 안 읽힌다.
+  - `RoomAvailability` — 업계 표준어(ARI)라 뜻은 정확하지만 길고 요금이 이름에 안 드러난다.
+  - `RoomQuote` — 총액이 중심이라 맞지만 예약 직전 단계 느낌이라 검색 결과에는 무겁다.
+  - `AvailableRoom`·`BookableRoom` — `availableRooms=0`도 응답에 포함하기로 이미 정해서 이름이 거짓말이 된다.
+- 판단: 도메인 의미가 얕더라도 읽는 사람이 헷갈릴 일이 없는 쪽을 골랐다. `Room`은 `RoomType` 엔티티와 겹쳐서 수식어를 붙였다.
+
+공급사 호출 이름을 `fetch`/`search`로 가름
+
+- 상황: 숙소 목록은 `fetchStays()`인데 요금·재고도 `fetchOffers()`로 계획해 뒀다.
+- 채택: 요금·재고는 `searchRooms(StayPeriod, 객실 코드 목록)`.
+  - 근거: 둘은 성격이 다르다. 목록은 하루 한 번 받아 DB에 저장하는 정적 마스터고, 요금·재고는 매 요청 조건을 넘겨 실시간으로 받는다. 같은 `fetch`를 쓰면 호출 비용과 시점 차이가 이름에서 사라진다.
+- 판단: `fetch`는 받아오는 것, `search`는 조건으로 찾는 것으로 갈랐다.
+
+입력 Command record 제거
+
+- 상황: `StaySearchRequest.toCommand()` → `StaySearchCommand(StayPeriod, Guests)` → `search(command)` 순이었다.
+- 채택: `StaySearchCommand`를 지우고 `search(StayPeriod period, Guests guests)`로 VO를 그대로 넘긴다. Request는 `toPeriod()`·`toGuests()`만 준다.
+  - 근거: 필드 2개에 동작이 없고 호출부가 한 곳뿐이라 파라미터 목록의 별칭 이상이 아니었다. 게다가 출력은 `stay/vo/StaySearchResult`인데 입력만 `stay/business`에 있어 같은 유스케이스의 입출력이 서로 다른 패키지·이름 규칙을 따르고 있었다.
+- 비교: `stay/vo/StaySearchCondition`으로 옮기고 개명 — 입출력이 둘 다 `vo`가 되어 대칭이 맞고 입력이 늘어도 시그니처가 안 변하지만, 지금은 감싸기만 하는 타입이 하나 남는다.
+- 판단: 아직 입력이 둘뿐이라 없는 쪽을 택했다. 정렬·필터·통화처럼 입력이 붙어 시그니처가 길어지면 그때 `stay/vo`에 조건 VO를 만든다.
+
+응답 record 제거
+
+- 상황: `controller/response`에 `SearchedRoomResponse`·`SupplierFailureResponse`·`StaySearchResponse` 세 record가 있었다. `available`을 빼고 나니 셋 다 대응 VO와 필드가 완전히 같아졌고, `from`은 값을 그대로 옮기기만 했다.
+- 채택: 셋을 지우고 `ApiResponse.success(result)`에 `StaySearchResult`를 그대로 넣는다. `controller/response` 패키지도 없앴다. 응답 JSON은 그대로다.
+  - 근거: 입력 Command를 지운 것과 같은 이유다. 계층 경계라는 이름이 붙어 있었지만 실제로 하는 일이 없었다. 지금 `SupplierFailureType` 같은 내부 enum도 응답 record를 거쳐 그대로 직렬화되고 있어서, 경계가 막고 있는 것도 없었다.
+- 비교:
+  - 전부 유지 — VO 필드 변경이 API로 새는 걸 막지만, 막을 변경이 아직 없는데 record 3개와 `from` 3개를 계속 들고 있어야 한다.
+  - 유지하고 일을 주기 — `SupplierFailureType`을 외부용 문자열로 번역시키는 안. 응답 record에 존재 이유가 생기지만, 그 번역이 지금 필요한지가 먼저다.
+- 판단: 지금 하는 일이 없는 타입은 지우고, 응답 모양이 VO와 갈라지는 시점(내부 enum 번역·파생 필드·`@Schema`)에 다시 만들기로 했다. 대가로 VO 필드를 바꾸면 그게 곧 API 계약 변경이라서, VO를 고칠 때 응답 스펙을 같이 봐야 한다. `architecture.md`에 "`controller/response`는 응답 모양이 VO와 다를 때만 만든다"로 규칙을 적었다.
+
+실패를 예외로 올리지 않고 응답 필드에 담는 이유
+
+- 상황: `SupplierHttpCaller`·`SupplierErrors`가 이미 실패를 `SupplierCallException`으로 만들어 던지는데, 왜 응답에 `failures[]`를 또 두느냐는 물음이 있었다. HTTP 상태로 잡으면 되지 않나.
+- 채택: 공급사 단위 실패는 잡아서 200 본문의 `failures[]`에 담는다. 예외는 지금처럼 그대로 던지고, 잡는 쪽이 경로에 따라 다르게 소비한다.
+  - 근거: 검색은 공급사 N개를 병렬 호출해 합치는 fan-out이라 실패 단위가 요청 전체가 아니라 공급사 하나다. A가 180건을 정상으로 줬는데 B가 503이라고 예외를 올리면 A의 180건까지 같이 버려져서, 팔 수 있는 객실이 있는데 사용자가 아무것도 못 본다. "전체 예산 5초 안에서 한 공급사가 늦어도 나머지로 응답한다"는 타임아웃 결정과도 부딪힌다. 그대로 올리면 공급사 하나가 느릴 때마다 항상 502가 나서 예산을 나눠 쓰는 설계가 무의미해진다.
+- 비교: 207 Multi-Status — 일부 성공을 상태 코드로 표현할 수 있지만 WebDAV용이고 일반 REST 클라이언트가 해석하지 못한다.
+- 판단: HTTP 상태는 응답당 하나뿐이라 "일부 성공"을 담을 수 없다. 그래서 상태 코드는 요청 전체의 성패만 말하게 두고, 공급사별 성패는 본문이 말하게 갈랐다. 정리하면 같은 `SupplierCallException`을 동기화는 잡아서 로그만 남기고, 검색은 잡아서 값으로 바꾸고, 요청 검증 같은 나머지는 안 잡아 `ApiControllerAdvice`로 보낸다.
+
+공급사 전부 실패 시 응답
+
+- 상황: 부분 실패 규칙만 있고 전부 실패하는 경우가 안 정해져 있었다. 그대로 두면 `rooms: []` + `failures: [A, B]`로 200이 나간다.
+- 채택: 예외를 올려 502를 낸다.
+  - 근거: 성공한 공급사가 하나도 없으면 부분 성공이 아니다. 200으로 주면 "검색은 됐는데 조건에 맞는 객실이 0건"과 본문을 열어보기 전까지 구별되지 않는다. 둘은 클라이언트가 다르게 다뤄야 하는 상황이다.
+- 채택(이어서): 어떤 공급사가 실패했는지도 그 응답에 같이 담는다. `AppException(ErrorType.SUPPLIER_ALL_FAILED, failures)`로 던져 `List<SupplierFailure>`를 `ErrorMessage.data`에 싣는다(`E2006`, 502, WARN).
+  - 근거: 502만 주면 클라이언트가 어느 공급사 때문인지 알 수 없어 재시도 판단도 장애 보고도 못 한다. `ApiResponse.error(ErrorType, Object)` → `ErrorMessage.data` 경로가 이미 있고, 검증 실패가 `{필드: 사유}` Map을 거기 담는 선례도 있다.
+- 비교: 첫 실패를 다시 던지기 — 새 `ErrorType` 없이 끝나지만 `SupplierCallException` 생성자가 `data`를 `supplier type code` 한 건으로 고정해서 공급사 하나만 실린다. 목록을 담으려면 결국 생성자를 손대야 한다.
+- 판단: 전용 `ErrorType`을 하나 늘리는 대가로 실패 목록을 구조체로 내보낸다. `SupplierFailureType`에는 대응 값을 두지 않았다. 이건 공급사 하나의 실패 분류가 아니라 검색 Service가 집계해서 내리는 판정이라 성격이 다르다.
+
+`SupplierFailure`를 `supplier/vo`로 옮기고 `toFailure()` 추가
+
+- 상황: `stay/vo/SupplierFailure(supplier, type, code)`가 `SupplierCallException`의 필드 세 개와 완전히 같았다. Service를 구현하면 catch 자리에서 `new SupplierFailure(e.getSupplier(), e.getType(), e.getCode())`를 손으로 조립하게 돼 있었다.
+- 채택: `supplier/vo/SupplierFailure`로 옮기고 `SupplierCallException.toFailure()`가 만들게 했다.
+  - 근거: 예외가 이미 완성된 값을 들고 있으니 도메인에서 같은 모양을 다시 선언할 이유가 없다. 게다가 이 record는 `stay/vo`에 있으면서 필드 타입 두 개(`Supplier`, `SupplierFailureType`)를 전부 `com.trip.supplier`에서 import하고 있었다. `SupplierStay`·`SupplierRoomType`을 `supplier/vo`로 옮겼던 것과 같은 성격의 타입이 도메인에 혼자 남아 있었다.
+- 비교: `SupplierFailure`를 없애고 `failures[]`에 예외를 그대로 담기 — 타입이 하나 줄지만, `StaySearchResult`가 이제 API 응답 본문이라 `Throwable`의 `stackTrace`·`cause`·`suppressed`가 그대로 직렬화된다.
+- 판단: 변환을 예외 쪽 메서드 하나로 모아 catch 자리마다 조립하지 않게 했다.
+
+`SearchedRoom`에 `Supplier` 접두어를 붙이지 않음
+
+- 상황: 공급사에서 가져온 응답 객체임을 드러내게 `SupplierSearchedRoom`으로 하자는 안이 나왔다.
+- 채택: `SearchedRoom` 그대로 둔다.
+  - 근거: 이건 공급사 응답 객체가 아니라 DB 절반 + 공급사 절반의 병합 결과다. "고정값 출처" 결정 때문에 `stayName`·`roomTypeName`·`maxOccupancy`는 DB 스냅샷에서 오고 재고·요금 API가 주는 같은 값은 무시한다. `stayId`·`roomTypeId`는 아예 우리가 발급한 UUID라 공급사가 본 적도 없다. 10개 중 5개에 잘못된 출처 표시를 다는 셈이다.
+- 비교: 접두어를 붙이면 `supplier/vo/SupplierRoom`(`searchRooms()`가 주는 순수 공급사 응답)과 나란히 `Supplier*`가 둘이 되어, 접두어가 "공급사 패키지의, 공급사 API가 준 것"이라는 지금 뜻을 잃는다.
+- 판단: 공급사에서 온 값이라는 표시는 `SupplierRoom`이 맡고, 병합 결과는 중립적인 이름으로 둔다.
+
+응답에서 파생 필드 `available` 제거
+
+- 상황: 응답에 `availableRooms`와 `available`(= `availableRooms > 0`)이 같이 있었다.
+- 채택: `availableRooms`만 둔다.
+  - 근거: 같은 값을 두 번 주는 것이고, 둘이 어긋난 응답이 나가면 어느 쪽이 맞는지 계약에 없다. 0인지 보는 판단은 클라이언트가 한다.
+- 판단: 편의 필드 하나보다 계약에 모순이 생길 여지를 없애는 쪽이 낫다고 봤다.
+
+**막힌 점과 해결**
+- 검증 실패 응답이 필드를 알려주지 않았다. `ApiControllerAdvice`가 E400 한 줄만 주고 어느 필드가 틀렸는지 없었다. `MethodArgumentNotValidException`의 필드 오류를 `{필드: 사유}`로 모아 `data`에 담게 고쳤다.
+- 그랬더니 날짜 형식 오류에서 Spring 기본 메시지가 내부 타입과 어노테이션 목록을 응답에 그대로 흘렸다. `isBindingFailure()`인 경우만 "형식이 올바르지 않습니다"로 바꿨다.
+- `@ModelAttribute` + record 조합의 예외 타입이 `BindException`일지 `MethodArgumentNotValidException`일지 확실치 않아 앱을 띄워 확인했다. 후자라 기존 핸들러가 그대로 받았다.
+
+**AI 활용**
+- 질문: 구현 전에 고려할 사항과 내가 판단할 항목을 물었다.
+  - 처리: 수정
+  - 이유: 확정·미결정·엣지 케이스가 한 번에 쏟아져 감이 안 잡혔다. 흐름을 단계로 자르고 단계마다 정할 것만 붙이게 다시 시켰다.
+- 질문: 아동 기본값은 VO가 채우는 게 역할 책임상 맞지 않냐고 물었다.
+  - 처리: 거부
+  - 이유: AI는 "생략하면 0은 HTTP 요청의 규칙"이라며 Request 유지를 권했다. 그건 변환이 아니라 도메인 해석이라고 보고 VO로 옮기게 했다.
+- 질문: `@ParameterObject`가 뭔지, `@RequestParam`과 같은데 객체 형태인 건지 물었다.
+  - 처리: 수용
+  - 이유: 바인딩은 `@ModelAttribute`가 하고 `@ParameterObject`는 springdoc 문서용이라 역할이 다르다는 설명을 받았다. 그래서 `@ModelAttribute`로 바꿨다.
+- 질문: `SupplierFailureResponse`를 왜 따로 만들었고 기존 타입을 왜 안 쓰냐고 물었다.
+  - 처리: 수정
+  - 이유: AI가 `support/exception/ErrorMessage` 얘기로 읽고 그걸 안 쓴 이유부터 답했다. 내가 물은 건 `SupplierHttpCaller`가 이미 만들고 있는 예외 경로였다. 다시 짚어 주니 `SupplierCallException`이 (supplier, type, code)를 그대로 들고 있다는 걸 확인하고 `toFailure()`로 정리했다. 다만 그 과정에서 응답 record 셋이 전부 VO의 복사본이 됐다는 지적은 맞아서 같이 지웠다.
+- 질문: `SearchedRoom`에 `Supplier` 접두어를 붙여 공급사 응답 객체임을 드러내자고 제안했다.
+  - 처리: 거부
+  - 이유: 필드 절반이 DB에서 오고 식별자는 우리 UUID라 접두어가 절반을 잘못 표시한다는 답을 받았다. `supplier/vo/SupplierRoom`과 뜻이 겹쳐 접두어 규칙이 무너진다는 점도 있었다.
+- 질문: 실패를 HTTP 상태로 잡으면 되지 왜 응답 필드에 담느냐고 물었다.
+  - 처리: 수용
+  - 이유: 공급사 fan-out이라 일부만 실패할 수 있고, 예외를 올리면 성공한 공급사 결과까지 버려진다는 설명을 받았다. 물으면서 전부 실패하는 경우가 안 정해져 있다는 걸 알게 돼 502로 정했다.
+- 질문: 전부 실패해서 502를 낼 때 어떤 공급사가 실패했는지도 응답에 담을 수 없냐고 물었다.
+  - 처리: 수용
+  - 이유: `ErrorMessage.data`가 이미 그 자리라는 답을 받았다. 덧붙여 첫 실패를 다시 던지는 안으로는 공급사 하나만 실린다는 걸 알게 돼서, 남겨뒀던 `ErrorType` 선택을 전용 값(`SUPPLIER_ALL_FAILED`)으로 정리했다.
+
+- 질문: 요금·재고 검색의 이름이 직관적이지 않고, Command record 없이 VO를 그대로 쓰면 되지 않냐고 물었다.
+  - 처리: 수정
+  - 이유: Command는 지워도 된다는 답은 맞았지만, 결과 단위 이름으로 AI가 낸 후보가 전부 `Offer` 변형이었다. 다른 단어를 다시 요구해 `SearchedRoom`을 골랐다.
+- 질문: 1 이상 같은 제약은 원래 실무에서 Request에 `@Valid`로 두지 않냐고 물었다.
+  - 처리: 수정
+  - 이유: AI가 처음에는 기존 규칙과 충돌한다는 점만 짚고 관례 자체는 답하지 않았다. 다시 물으니 둘을 같이 두는 게 실무 관례이고 중복이 아닌 이유(계약 대 불변식)를 설명했다. 그 기준으로 둘 다 채택하고 규칙 문서를 고치게 했다.

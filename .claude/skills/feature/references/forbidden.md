@@ -12,7 +12,7 @@
 - **Controller가 Implement를 호출하면 안 된다**
 - **Implement가 다른 도메인의 Business를 참조하면 안 된다**
 - **JPA 엔티티를 메서드 파라미터로 계층 간 전달하면 안 된다** (VO의 `from(Entity)`는 예외)
-- **`business/`에 Service·Command 외의 전달용 타입을 두면 안 된다**
+- **`business/`에 Service 외의 타입을 두면 안 된다** (입력을 감싸는 Command record도 두지 않는다)
 
 ## Supplier Integration
 
@@ -25,7 +25,8 @@
 ## Implement
 
 - **CRUD를 Reader·Writer로 나누거나 별도 Validator를 만들면 안 된다**
-- **VO가 검증하는 제약을 Service·Manager·Request에서 다시 검사하면 안 된다**
+- **VO가 검증하는 제약을 Service·Manager에서 다시 검사하면 안 된다**
+  - Request의 Bean Validation은 예외다. 필드 하나짜리 제약은 HTTP 계약으로 Request에도 선언한다(`patterns.md`). 필드 간 규칙은 Request에 선언하지 않는다
 
 ## Response
 
