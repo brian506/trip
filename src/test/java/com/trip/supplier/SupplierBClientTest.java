@@ -5,10 +5,16 @@ import com.trip.supplier.fixture.SupplierPropertiesFixture;
 import com.trip.supplier.global.SupplierHttpCaller;
 import com.trip.supplier.vo.SupplierRoomType;
 import com.trip.supplier.vo.SupplierStay;
+import com.trip.supplier.vo.SupplierStayCodes;
 import com.trip.support.exception.supplier.SupplierCallException;
 import com.trip.support.exception.supplier.SupplierFailureType;
+import com.trip.support.fixture.StayPeriodFixture;
+import com.trip.support.vo.Guests;
+import com.trip.support.vo.StayPeriod;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
+import mockwebserver3.RecordedRequest;
+import okhttp3.HttpUrl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,8 +25,13 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
+import static com.trip.supplier.fixture.SupplierResponseFixture.B_STAY_CODE;
+import static com.trip.supplier.fixture.SupplierResponseFixture.bRoom;
+import static com.trip.supplier.fixture.SupplierResponseFixture.bRooms;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.tuple;
@@ -98,5 +109,31 @@ class SupplierBClientTest {
         assertThat(((SupplierCallException) thrown).toFailure())
                 .extracting(failure -> failure.supplier(), failure -> failure.type(), failure -> failure.code())
                 .containsExactly(Supplier.B, SupplierFailureType.UNAVAILABLE, "E503");
+    }
+
+    @Test
+    @DisplayName("B에 보내는 재고·요금 요청은 숙소 코드를 쉼표로 이어 붙이고 기간·인원을 쿼리에 담는다")
+    void sendStayCodesAndPeriodAsQuery() throws InterruptedException {
+        // given
+        server.enqueue(new MockResponse.Builder()
+                .code(200)
+                .addHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .body(bRooms(bRoom()))
+                .build());
+        StayPeriod period = StayPeriodFixture.twoNights();
+        Set<String> codes = new LinkedHashSet<>(List.of(B_STAY_CODE, "B-2002"));
+
+        // when
+        client.fetchRooms(period, new Guests(2, 1), new SupplierStayCodes(codes));
+
+        // then
+        RecordedRequest request = server.takeRequest();
+        HttpUrl url = request.getUrl();
+        assertThat(url.encodedPath()).isEqualTo("/b/api/search");
+        assertThat(url.queryParameter("propertyIds")).isEqualTo("B-2001,B-2002");
+        assertThat(url.queryParameter("checkIn")).isEqualTo(period.checkIn().toString());
+        assertThat(url.queryParameter("checkOut")).isEqualTo(period.checkOut().toString());
+        assertThat(url.queryParameter("adults")).isEqualTo("2");
+        assertThat(url.queryParameter("children")).isEqualTo("1");
     }
 }

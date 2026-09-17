@@ -134,4 +134,25 @@ class StaySearchApiTest extends StayApiTest {
         result.andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.errorCode").value("E1002"));
     }
+
+    @Test
+    @DisplayName("체크인이 오늘이면 검색을 받아들인다")
+    void acceptSearchWhenCheckInIsToday() throws Exception {
+        // given
+        syncBothSuppliers();
+        supplierServer.given(A_ROOMS, aRooms(aRoom()));
+        supplierServer.given(B_ROOMS, bRooms(bRoom()));
+        LocalDate today = LocalDate.now();
+
+        // when
+        var result = mockMvc.perform(get("/api/v1/stays/search")
+                .param("checkIn", today.toString())
+                .param("checkOut", today.plusDays(1).toString())
+                .param("adults", "2"));
+
+        // then
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultType").value("SUCCESS"))
+                .andExpect(jsonPath("$.error").doesNotExist());
+    }
 }
