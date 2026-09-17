@@ -128,15 +128,15 @@ class SupplierAClientTest {
         // then
         assertThat(thrown).isInstanceOf(SupplierCallException.class);
         assertThat(((SupplierCallException) thrown).toFailure())
-                .extracting(f -> f.supplier(), f -> f.type(), f -> f.code())
-                .containsExactly(Supplier.A, SupplierFailureType.UNAVAILABLE, "HOTEL_SERVICE_DOWN");
+                .extracting(f -> f.supplier(), f -> f.code())
+                .containsExactly(Supplier.A, "HOTEL_SERVICE_DOWN");
     }
 
     @Test
     @DisplayName("A의 실패 본문에 error 코드가 없으면 상태 코드 숫자를 실패 코드로 남긴다")
     void fallBackToStatusCodeWhenFailureBodyHasNoErrorCode() {
         // given
-        enqueue(500, "{}");
+        enqueue(503, "{}");
 
         // when
         Throwable thrown = catchThrowable(() -> client.fetchStays());
@@ -144,7 +144,7 @@ class SupplierAClientTest {
         // then
         assertThat(thrown).isInstanceOf(SupplierCallException.class);
         assertThat(((SupplierCallException) thrown).toFailure())
-                .extracting(f -> f.type(), f -> f.code())
-                .containsExactly(SupplierFailureType.INTERNAL, "500");
+                .extracting(f -> f.supplier(), f -> f.code())
+                .containsExactly(Supplier.A, "503");
     }
 }

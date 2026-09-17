@@ -16,10 +16,13 @@ public abstract class ApiTest extends SpringTest {
     @Autowired
     protected MockMvc mockMvc;
 
+    // API 키도 테스트 전용 값으로 덮는다. 운영 설정값을 그대로 쓰면 설정을 안 읽고 문자열을 박아 넣어도 통과한다.
     @DynamicPropertySource
     static void supplierEndpoints(DynamicPropertyRegistry registry) {
         registry.add("supplier.endpoints.A.base-url", supplierServer::baseUrl);
         registry.add("supplier.endpoints.B.base-url", supplierServer::baseUrl);
+        registry.add("supplier.endpoints.A.api-key", () -> "test-key-a");
+        registry.add("supplier.endpoints.B.api-key", () -> "test-key-b");
     }
 
     @AfterEach
