@@ -6,6 +6,7 @@ import com.trip.stay.vo.RoomOption;
 import com.trip.supplier.SupplierClient;
 import com.trip.support.exception.supplier.SupplierCallException;
 import com.trip.supplier.global.SupplierDispatcher;
+import com.trip.supplier.global.SupplierRetry;
 import com.trip.supplier.vo.SupplierDispatchResult;
 import com.trip.supplier.vo.SupplierStay;
 import com.trip.support.exception.AppException;
@@ -25,6 +26,7 @@ public class StayService {
     private final List<SupplierClient> clients;
     private final StayManager stayManager;
     private final SupplierDispatcher supplierDispatcher;
+    private final SupplierRetry supplierRetry;
 
     public StaySearchResponse search(StayPeriod period, Guests guests) {
         List<RoomOption> options = stayManager.findActiveRooms(guests);
@@ -46,7 +48,7 @@ public class StayService {
     private void sync(SupplierClient client) {
         List<SupplierStay> supplierStays;
         try {
-            supplierStays = client.fetchStays();
+            supplierStays = supplierRetry.call(client.supplier(), client::fetchStays);
         } catch (SupplierCallException e) {
             log.warn("[숙소 동기화 : 목록 조회 실패]: supplier={} | type={} | code={}",
                     e.getSupplier(), e.getType(), e.getCode(), e);

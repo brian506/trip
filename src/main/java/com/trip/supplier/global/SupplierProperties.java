@@ -13,7 +13,9 @@ public record SupplierProperties(
         int maxConnections,
         Duration pendingAcquireTimeout,
         Duration maxIdleTime,
-        Duration totalTimeout
+        Duration totalTimeout,
+        SupplierCircuitBreakerSettings circuitBreaker,
+        SupplierRetrySettings retry
 ) {
 
     public SupplierEndpoint connectEndpoint(Supplier supplier) {

@@ -37,6 +37,7 @@ public class SupplierDispatcher {
     private final List<SupplierClient> clients;
     private final SupplierProperties properties;
     private final ExecutorService supplierExecutor;
+    private final SupplierCircuitBreaker circuitBreaker;
 
     public SupplierDispatchResult dispatch(StayPeriod period, Guests guests, Map<Supplier, Set<String>> stayCodesBySupplier) {
         List<SupplierClient> targets = clients.stream()
@@ -76,7 +77,7 @@ public class SupplierDispatcher {
                               Queue<SupplierRoom> rooms, Map<Supplier, SupplierFailure> failures) {
         for (SupplierStayCodes batch : SupplierStayCodes.partition(stayCodes)) {
             try {
-                rooms.addAll(client.fetchRooms(period, guests, batch));
+                rooms.addAll(circuitBreaker.call(client.supplier(), () -> client.fetchRooms(period, guests, batch)));
             } catch (SupplierCallException e) {
                 failures.putIfAbsent(client.supplier(), e.toFailure());
                 log.warn("[공급사 재고/요금 호출 : 묶음 실패]: supplier={} | type={} | code={} | stayCodeCount={}",

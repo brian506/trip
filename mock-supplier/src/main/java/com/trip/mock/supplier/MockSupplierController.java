@@ -40,14 +40,27 @@ public class MockSupplierController {
 
     // ── ① 숙소 목록 (정적 콘텐츠) ─────────────────────────────
 
+    // 목록 API도 재고·요금과 같은 모드를 따른다. 동기화 재시도를 확인하려면 여기서도 장애가 나야 한다.
+
     @GetMapping(value = "/a/v1/hotels", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> hotelsA() {
-        return ResponseEntity.ok(A_HOTELS);
+        return switch (modeOf("a")) {
+            case ERROR -> ResponseEntity.status(503)
+                    .body("""
+                            {"error":"SERVICE_UNAVAILABLE","message":"temporarily unavailable"}""");
+            case NO_RESPONSE -> noResponse();
+            default -> ResponseEntity.ok(A_HOTELS);
+        };
     }
 
     @GetMapping(value = "/b/api/properties", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> propertiesB() {
-        return ResponseEntity.ok(B_PROPERTIES);
+        return switch (modeOf("b")) {
+            case ERROR -> ResponseEntity.ok("""
+                    {"resultCode":"E503","resultMessage":"TEMPORARILY_UNAVAILABLE","data":null}""");
+            case NO_RESPONSE -> noResponse();
+            default -> ResponseEntity.ok(B_PROPERTIES);
+        };
     }
 
     // ── ② 재고·요금 조회 (숙소 코드 목록을 받는다) ─────────────

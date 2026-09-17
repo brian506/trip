@@ -40,6 +40,10 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 
+	// resilience4j
+	implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.3.0'
+	implementation 'io.github.resilience4j:resilience4j-retry:2.3.0'
+
 	// swagger (springdoc-openapi)
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'
 
