@@ -69,7 +69,9 @@ public class MockSupplierController {
     public ResponseEntity<String> availabilityA(
             @RequestParam String hotelCodes,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut,
+            @RequestParam int adults,
+            @RequestParam(defaultValue = "0") int children) {
         return switch (modeOf("a")) {
             case ERROR -> ResponseEntity.status(503)
                     .body("""
@@ -83,7 +85,9 @@ public class MockSupplierController {
     public ResponseEntity<String> searchB(
             @RequestParam String propertyIds,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut,
+            @RequestParam int adults,
+            @RequestParam(defaultValue = "0") int children) {
         return switch (modeOf("b")) {
             // B는 장애 상황에서도 HTTP 200이고 본문 코드로 알린다.
             case ERROR -> ResponseEntity.ok("""

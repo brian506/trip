@@ -9,7 +9,7 @@ TYPES="feature|fix|refactor|test|docs|chore"
 SUBJECT=$(grep -v '^#' "$MSG_FILE" | grep -v '^[[:space:]]*$' | head -n 1)
 
 # Work environment files (Claude, hooks, scripts, issue templates) are committed to main without an issue.
-ENV_PATHS='^(\.claude/|CLAUDE\.md$|JOURNAL\.md$|\.githooks/|scripts/|\.github/ISSUE_TEMPLATE/)'
+ENV_PATHS='^(\.claude/|CLAUDE\.md$|docs/JOURNAL\.md$|\.githooks/|scripts/|\.github/ISSUE_TEMPLATE/)'
 NON_ENV=$(git diff --cached --name-only | grep -vE "$ENV_PATHS")
 
 case "$SUBJECT" in
