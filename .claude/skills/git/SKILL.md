@@ -26,7 +26,7 @@ argument-hint: "[commit | issue | journal] [설명]"
 ## commit
 
 - 제목: `<type>[#<이슈번호>]: <한글 설명>`. type은 `feature`, `fix`, `refactor`, `test`, `docs`, `chore`.
-- 작업 환경 파일(`.claude/`, `CLAUDE.md`, `JOURNAL.md`, `.githooks/`, `scripts/`, `.github/ISSUE_TEMPLATE/`)만 바꾸면 이슈·PR 없이 `main`에서 `<type>: <한글 설명>`으로 커밋한다.
+- 작업 환경 파일(`.claude/`, `CLAUDE.md`, `docs/JOURNAL.md`, `.githooks/`, `scripts/`, `.github/ISSUE_TEMPLATE/`)만 바꾸면 이슈·PR 없이 `main`에서 `<type>: <한글 설명>`으로 커밋한다.
 - 커밋 단위 기준은 미결정이다. 애매하면 묻는다.
 - 커밋은 사용자가 요청할 때만 한다. `--no-verify`, `git add -f`는 쓰지 않는다.
 - 커밋 메시지에 `closes #N`, `fixes #N`, `resolves #N`을 쓰지 않는다.
