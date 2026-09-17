@@ -4,6 +4,7 @@ import mockwebserver3.Dispatcher;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import mockwebserver3.RecordedRequest;
+import okhttp3.Headers;
 import org.springframework.http.MediaType;
 
 import java.io.IOException;
@@ -21,12 +22,15 @@ public final class SupplierMockServer {
 
     private final MockWebServer server = new MockWebServer();
     private final Map<String, MockResponse> responses = new ConcurrentHashMap<>();
+    private final Map<String, Headers> receivedHeaders = new ConcurrentHashMap<>();
 
     public SupplierMockServer() {
         server.setDispatcher(new Dispatcher() {
             @Override
             public MockResponse dispatch(RecordedRequest request) {
-                return responses.getOrDefault(request.getUrl().encodedPath(), response(404, "{}"));
+                String path = request.getUrl().encodedPath();
+                receivedHeaders.put(path, request.getHeaders());
+                return responses.getOrDefault(path, response(404, "{}"));
             }
         });
         try {
@@ -48,8 +52,14 @@ public final class SupplierMockServer {
         responses.put(path, response(status, body));
     }
 
+    public String receivedHeader(String path, String name) {
+        Headers headers = receivedHeaders.get(path);
+        return headers == null ? null : headers.get(name);
+    }
+
     public void reset() {
         responses.clear();
+        receivedHeaders.clear();
     }
 
     private static MockResponse response(int status, String body) {

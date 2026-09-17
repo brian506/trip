@@ -190,4 +190,21 @@ class StaySyncApiTest extends StayApiTest {
                 .extracting(SearchedRoom::supplier, SearchedRoom::stayName)
                 .containsExactly(tuple(Supplier.B, B_STAY_NAME));
     }
+
+    @Test
+    @DisplayName("공급사에 나가는 요청에는 설정에 적힌 공급사별 API 키가 담긴다")
+    void sendConfiguredApiKeyToEachSupplier() throws Exception {
+        // given
+        supplierServer.given(A_STAYS, aStays(aHotel()));
+        supplierServer.given(B_STAYS, bStays(bProperty()));
+
+        // when
+        sync();
+
+        // then
+        assertThat(supplierServer.receivedHeader(A_STAYS, "X-Api-Key"))
+                .isEqualTo(supplierProperties.connectEndpoint(Supplier.A).apiKey());
+        assertThat(supplierServer.receivedHeader(B_STAYS, "X-Api-Key"))
+                .isEqualTo(supplierProperties.connectEndpoint(Supplier.B).apiKey());
+    }
 }

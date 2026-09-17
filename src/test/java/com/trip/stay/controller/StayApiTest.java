@@ -1,6 +1,7 @@
 package com.trip.stay.controller;
 
 import com.trip.stay.controller.response.StaySearchResponse;
+import com.trip.supplier.global.SupplierProperties;
 import com.trip.support.ApiTest;
 import com.trip.support.fixture.StayPeriodFixture;
 import com.trip.support.response.ApiResponse;
@@ -23,6 +24,9 @@ abstract class StayApiTest extends ApiTest {
 
     @Autowired
     private JsonMapper jsonMapper;
+
+    @Autowired
+    protected SupplierProperties supplierProperties;
 
     protected void sync() throws Exception {
         mockMvc.perform(post("/api/v1/stays/sync")).andExpect(status().isCreated());
