@@ -192,6 +192,50 @@ class StaySyncApiTest extends StayApiTest {
     }
 
     @Test
+    @DisplayName("공급사 목록 조회가 재시도를 다 쓰고도 실패하면 그 공급사의 기존 숙소가 그대로 남는다")
+    void keepStaysWhenSupplierListFailsAfterRetries() throws Exception {
+        // given
+        supplierServer.given(B_STAYS, bStays());
+        supplierServer.given(A_STAYS, aStays(aHotel()));
+        supplierServer.given(A_ROOMS, aRooms(aRoom()));
+        sync();
+        supplierServer.given(A_STAYS, 503, aError("HOTEL_SERVICE_DOWN"));
+        sync();
+
+        // when
+        StaySearchResponse response = searchResult(2);
+
+        // then
+        assertThat(response.rooms())
+                .extracting(SearchedRoom::stayName)
+                .containsExactly(A_STAY_NAME);
+    }
+
+    @Test
+    @DisplayName("공급사 목록에서 빠졌던 객실이 다시 나타나면 검색 결과에 다시 나온다")
+    void returnRoomTypeThatReappearsInSupplierList() throws Exception {
+        // given
+        supplierServer.given(B_STAYS, bStays());
+        supplierServer.given(A_ROOMS, aRooms(aRoom(), aRoom(A_STAY_CODE, "A-R02")));
+        supplierServer.given(A_STAYS, aStays(
+                aHotel(A_STAY_CODE, A_STAY_NAME, aRoomType(), aRoomType("A-R02", "이그제큐티브 스위트", 4))));
+        sync();
+        supplierServer.given(A_STAYS, aStays(aHotel()));
+        sync();
+        supplierServer.given(A_STAYS, aStays(
+                aHotel(A_STAY_CODE, A_STAY_NAME, aRoomType(), aRoomType("A-R02", "이그제큐티브 스위트", 4))));
+        sync();
+
+        // when
+        StaySearchResponse response = searchResult(2);
+
+        // then
+        assertThat(response.rooms())
+                .extracting(SearchedRoom::roomTypeName)
+                .containsExactlyInAnyOrder(A_ROOM_TYPE_NAME, "이그제큐티브 스위트");
+    }
+
+    @Test
     @DisplayName("공급사에 나가는 요청에는 설정에 적힌 공급사별 API 키가 담긴다")
     void sendConfiguredApiKeyToEachSupplier() throws Exception {
         // given

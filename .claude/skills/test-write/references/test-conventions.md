@@ -17,7 +17,7 @@
 | 공급사 입력 모델 단위 | `SupplierStayCodes` 등 `supplier`의 VO | 순수 JUnit | `supplier/vo/*Test` | `test` |
 | 공급사 코드 매핑 | `BResultCode` 등 계층이 없는 것 | 순수 JUnit | `supplier/*Test` | `test` |
 | 공급사 Client 단위 | WebClient 호출, 타임아웃, 에러 응답 | MockWebServer | `supplier/*ClientTest` | `test` |
-| 통합 | 서비스 + H2 | `SpringTest` 상속 | `{domain}/integration/*IntegrationTest` | `integrationTest` |
+| 통합 | API 호출 결과 | `ApiTest` 상속 (MockMvc + H2) | `{domain}/controller/*ApiTest` | `integrationTest` |
 
 - 픽스처는 `{domain}/fixture/*Fixture`에 둔다. static 상수와 팩토리 메서드, 또는 enum 픽스처로 직접 만든다.
 - 공통 지원 클래스는 테스트 소스의 `com.trip.support`에 둔다: `IntegrationTest`, `SpringTest`.
@@ -38,14 +38,21 @@ mock은 상황을 만들기 위한 입력이지 검증 대상이 아니다.
 동작이 멀쩡한데 테스트가 깨지고, 반대로 결과가 틀려도 호출만 맞으면 통과한다.
 
 그래서 **반환값이 없는 메서드는 단위 테스트로 쓰지 않는다.** 저장·동기화처럼 부수효과만 있는 경로는
-통합 테스트에서 DB를 다시 읽어 상태로 확인한다(아래 통합 테스트).
+통합 테스트에서 그 효과가 드러나는 다음 API 호출로 확인한다(아래 통합 테스트).
 
 MockWebServer의 `takeRequest()`로 **실제로 나간 HTTP 요청**을 단언하는 것은 여기 해당하지 않는다.
 mock 상호작용이 아니라 공급사가 받는 계약이라 그대로 쓴다.
 
 ## 통합 테스트
 
-- `SpringTest`를 상속한다. `@IntegrationTest` + `@ActiveProfiles("test")` + `@Transactional`이라 테스트마다 롤백된다.
+- `ApiTest`를 상속한다. `SpringTest`(`@IntegrationTest` + `@ActiveProfiles("test")` + `@Transactional`)에
+  MockMvc와 공급사 MockWebServer 배선이 얹혀 있다.
+- **API를 호출했을 때 돌아오는 값과 예외만 단언한다. DB를 다시 읽지 않는다.**
+  리포지토리를 들여다보면 통합 테스트가 다시 구현 내부를 계약으로 굳힌다. 컬럼 이름이나 플래그 방식을
+  바꾸면 동작이 같아도 깨진다. 단위에서 호출 검증을 빼는 이유가 여기에도 그대로 걸린다.
+- 반환값이 없는 경로는 그 효과가 드러나는 다음 호출로 관찰한다. 동기화(`POST /sync`)는 201만 주므로
+  이어지는 검색 응답으로 본다.
+- 준비 데이터도 리포지토리가 아니라 API로 넣는다.
 - DB는 `application-test.yaml`의 H2 인메모리이고, 컨텍스트마다 이름이 달라 서로 섞이지 않는다.
 - 별도 스레드나 Reactor에서 커밋한 데이터는 롤백되지 않는다. 그런 테스트는 끝날 때 직접 정리한다.
 - 공급사 호출은 MockWebServer로 대체한다. 9090 Mock 서버나 실제 외부 주소를 호출하지 않는다.
@@ -54,7 +61,10 @@ mock 상호작용이 아니라 공급사가 받는 계약이라 그대로 쓴다
 
 - `mockwebserver3.MockWebServer`를 테스트마다 시작·종료하고, Client의 base URL을 서버 주소로 지정한다.
 - 지연, 타임아웃, 5xx, 잘못된 본문은 응답 설정으로 실제로 재현한다.
-- 보낸 요청은 `takeRequest()`로 꺼내 경로, 쿼리, 헤더(`X-Api-Key`)를 단언한다.
+- 보낸 요청은 `takeRequest()`로 꺼내 경로와 쿼리를 단언한다. 클라이언트가 직접 만드는 값이다.
+- **`X-Api-Key`는 여기서 단언하지 않는다.** 헤더를 붙이는 것은 클라이언트가 아니라 `WebClientConfig`인데
+  단위 테스트는 `WebClient`를 직접 조립하므로, 자기가 넣은 값을 자기가 확인하는 꼴이 된다.
+  헤더는 통합 테스트에서 `SupplierProperties`의 설정값과 대조한다.
 
 ## 형식
 
