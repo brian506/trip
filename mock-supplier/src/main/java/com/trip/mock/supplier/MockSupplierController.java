@@ -21,7 +21,7 @@ public class MockSupplierController {
     private static final String ERROR = "error";
     private static final String NO_RESPONSE = "no-response";
 
-    // 무응답은 연결만 되고 응답이 오지 않는 상황이다. 검색 예산(5s)보다 훨씬 길게 잡아 사실상 오지 않게 한다.
+    // 무응답은 연결만 되고 응답이 오지 않는 상황이다. 검색 전체 타임아웃(5s)보다 훨씬 길게 잡아 사실상 오지 않게 한다.
     private static final long NO_RESPONSE_MILLIS = 600_000L;
 
     // 숙박일마다 돌려 쓰는 {잔여 수, 1박 요금(net), 세액}. A-10044는 둘째 날 잔여가 0이라 availableRooms=0 경로를 만든다.

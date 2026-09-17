@@ -38,7 +38,6 @@ public record SupplierStayCodes(Set<String> values) {
         return List.copyOf(batches);
     }
 
-    // 요청 파라미터로 실을 쉼표 구분 문자열
     public String joined() {
         return String.join(",", values);
     }

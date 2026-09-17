@@ -2,12 +2,10 @@ package com.trip.supplier.b.response;
 
 import com.trip.supplier.vo.SupplierRoom;
 import com.trip.support.vo.StayPeriod;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Slf4j
 public record BSearchData(List<BSearchItem> items) {
 
     public List<SupplierRoom> toSupplierRooms(StayPeriod period) {

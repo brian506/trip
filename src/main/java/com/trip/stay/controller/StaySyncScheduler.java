@@ -1,6 +1,6 @@
 package com.trip.stay.controller;
 
-import com.trip.stay.business.StaySyncService;
+import com.trip.stay.business.StayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "stay.sync.enabled", havingValue = "true", matchIfMissing = true)
 public class StaySyncScheduler implements ApplicationRunner {
 
-    private final StaySyncService staySyncService;
+    private final StayService stayService;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -30,7 +30,7 @@ public class StaySyncScheduler implements ApplicationRunner {
 
     private void runSafely(String trigger) {
         try {
-            staySyncService.syncAll();
+            stayService.syncAll();
         } catch (RuntimeException e) {
             log.error("[숙소 동기화 : 실행 실패]: trigger={}", trigger, e);
         }

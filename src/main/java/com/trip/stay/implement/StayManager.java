@@ -2,9 +2,12 @@ package com.trip.stay.implement;
 
 import com.trip.stay.dataaccess.entity.Stay;
 import com.trip.stay.dataaccess.repository.StayRepository;
+import com.trip.stay.vo.RoomKey;
 import com.trip.stay.vo.RoomOption;
+import com.trip.stay.vo.SearchedRoom;
 import com.trip.support.vo.Guests;
 import com.trip.supplier.Supplier;
+import com.trip.supplier.vo.SupplierRoom;
 import com.trip.supplier.vo.SupplierRoomType;
 import com.trip.supplier.vo.SupplierStay;
 import java.util.ArrayList;
@@ -40,6 +43,27 @@ public class StayManager {
         return roomTypeManager.findByStayIds(stayById.keySet(), guests.total()).stream()
                 .map(roomType -> RoomOption.from(stayById.get(roomType.getStayId()), roomType))
                 .toList();
+    }
+
+    public Map<Supplier, Set<String>> toStayCodes(List<RoomOption> options) {
+        return options.stream().collect(Collectors.groupingBy(
+                RoomOption::supplier,
+                Collectors.mapping(RoomOption::stayCode, Collectors.toSet())));
+    }
+
+    public List<SearchedRoom> toSearchedRooms(List<RoomOption> options, List<SupplierRoom> supplierRooms) {
+        Map<RoomKey, RoomOption> optionByKey = options.stream()
+                .collect(Collectors.toMap(RoomKey::from, Function.identity(), (first, next) -> first));
+
+        List<SearchedRoom> rooms = new ArrayList<>();
+        for (SupplierRoom supplierRoom : supplierRooms) {
+            RoomOption option = optionByKey.get(RoomKey.from(supplierRoom));
+            if (option == null) {
+                continue;
+            }
+            rooms.add(SearchedRoom.of(option, supplierRoom));
+        }
+        return rooms;
     }
 
     @Transactional

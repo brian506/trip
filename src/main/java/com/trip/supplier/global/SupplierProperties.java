@@ -13,7 +13,7 @@ public record SupplierProperties(
         int maxConnections,
         Duration pendingAcquireTimeout,
         Duration maxIdleTime,
-        Duration searchBudget
+        Duration totalTimeout
 ) {
 
     public SupplierEndpoint connectEndpoint(Supplier supplier) {

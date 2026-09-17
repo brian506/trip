@@ -1,28 +1,46 @@
 package com.trip.stay.business;
 
+import com.trip.stay.controller.response.StaySearchResponse;
 import com.trip.stay.implement.StayManager;
+import com.trip.stay.vo.RoomOption;
 import com.trip.supplier.SupplierClient;
-import com.trip.supplier.exception.SupplierCallException;
+import com.trip.support.exception.supplier.SupplierCallException;
+import com.trip.supplier.global.SupplierDispatcher;
+import com.trip.supplier.vo.SupplierDispatchResult;
 import com.trip.supplier.vo.SupplierStay;
 import com.trip.support.exception.AppException;
+import com.trip.support.exception.ErrorType;
+import com.trip.support.vo.Guests;
+import com.trip.support.vo.StayPeriod;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class StaySyncService {
+public class StayService {
 
     private final List<SupplierClient> clients;
     private final StayManager stayManager;
+    private final SupplierDispatcher supplierDispatcher;
+
+    public StaySearchResponse search(StayPeriod period, Guests guests) {
+        List<RoomOption> options = stayManager.findActiveRooms(guests);
+        if (options.isEmpty()) {
+            return new StaySearchResponse(List.of(), List.of());
+        }
+
+        SupplierDispatchResult result = supplierDispatcher.dispatch(period, guests, stayManager.toStayCodes(options));
+        if (result.allFailed()) {
+            throw new AppException(ErrorType.SUPPLIER_ALL_FAILED, result.failures());
+        }
+        return new StaySearchResponse(stayManager.toSearchedRooms(options, result.rooms()), result.failures());
+    }
 
     public void syncAll() {
-        for (SupplierClient client : clients) {
-            sync(client);
-        }
+        clients.forEach(this::sync);
     }
 
     private void sync(SupplierClient client) {

@@ -1,6 +1,6 @@
 package com.trip.supplier.b;
 
-import com.trip.supplier.exception.SupplierFailureType;
+import com.trip.support.exception.supplier.SupplierFailureType;
 import java.util.Arrays;
 
 public enum BResultCode {
@@ -30,6 +30,3 @@ public enum BResultCode {
                 .orElse(SupplierFailureType.INTERNAL);
     }
 }
-/**
- * 공급사 별 resultCode를 내 서비스 ErrorCode에 따로 못 넣나?
- */

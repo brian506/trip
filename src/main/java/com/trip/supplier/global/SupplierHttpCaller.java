@@ -1,9 +1,9 @@
 package com.trip.supplier.global;
 
 import com.trip.supplier.Supplier;
-import com.trip.supplier.exception.SupplierCallException;
-import com.trip.supplier.exception.SupplierErrors;
-import com.trip.supplier.exception.SupplierFailureType;
+import com.trip.support.exception.supplier.SupplierCallException;
+import com.trip.support.exception.supplier.SupplierErrors;
+import com.trip.support.exception.supplier.SupplierFailureType;
 import java.util.function.BiFunction;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatusCode;
