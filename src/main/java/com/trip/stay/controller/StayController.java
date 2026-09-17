@@ -1,7 +1,6 @@
 package com.trip.stay.controller;
 
-import com.trip.stay.business.StaySearchService;
-import com.trip.stay.business.StaySyncService;
+import com.trip.stay.business.StayService;
 import com.trip.stay.controller.request.StaySearchRequest;
 import com.trip.stay.controller.response.StaySearchResponse;
 import com.trip.support.response.ApiResponse;
@@ -23,8 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class StayController {
 
-    private final StaySearchService staySearchService;
-    private final StaySyncService staySyncService;
+    private final StayService stayService;
 
     @Operation(
             summary = "통합 검색",
@@ -32,7 +30,7 @@ public class StayController {
     )
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<StaySearchResponse>> search(@Valid @ModelAttribute StaySearchRequest request) {
-        StaySearchResponse result = staySearchService.search(request.toPeriod(), request.toGuests());
+        StaySearchResponse result = stayService.search(request.toPeriod(), request.toGuests());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -42,7 +40,7 @@ public class StayController {
     )
     @PostMapping("/sync")
     public ResponseEntity<ApiResponse<Void>> sync() {
-        staySyncService.syncAll();
+        stayService.syncAll();
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success());
     }
 }

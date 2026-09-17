@@ -21,7 +21,7 @@ public class MockSupplierController {
     private static final String ERROR = "error";
     private static final String NO_RESPONSE = "no-response";
 
-    // 무응답은 연결만 되고 응답이 오지 않는 상황이다. 검색 예산(5s)보다 훨씬 길게 잡아 사실상 오지 않게 한다.
+    // 무응답은 연결만 되고 응답이 오지 않는 상황이다. 검색 전체 타임아웃(5s)보다 훨씬 길게 잡아 사실상 오지 않게 한다.
     private static final long NO_RESPONSE_MILLIS = 600_000L;
 
     // 숙박일마다 돌려 쓰는 {잔여 수, 1박 요금(net), 세액}. A-10044는 둘째 날 잔여가 0이라 availableRooms=0 경로를 만든다.
@@ -40,14 +40,27 @@ public class MockSupplierController {
 
     // ── ① 숙소 목록 (정적 콘텐츠) ─────────────────────────────
 
+    // 목록 API도 재고·요금과 같은 모드를 따른다. 동기화 재시도를 확인하려면 여기서도 장애가 나야 한다.
+
     @GetMapping(value = "/a/v1/hotels", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> hotelsA() {
-        return ResponseEntity.ok(A_HOTELS);
+        return switch (modeOf("a")) {
+            case ERROR -> ResponseEntity.status(503)
+                    .body("""
+                            {"error":"SERVICE_UNAVAILABLE","message":"temporarily unavailable"}""");
+            case NO_RESPONSE -> noResponse();
+            default -> ResponseEntity.ok(A_HOTELS);
+        };
     }
 
     @GetMapping(value = "/b/api/properties", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> propertiesB() {
-        return ResponseEntity.ok(B_PROPERTIES);
+        return switch (modeOf("b")) {
+            case ERROR -> ResponseEntity.ok("""
+                    {"resultCode":"E503","resultMessage":"TEMPORARILY_UNAVAILABLE","data":null}""");
+            case NO_RESPONSE -> noResponse();
+            default -> ResponseEntity.ok(B_PROPERTIES);
+        };
     }
 
     // ── ② 재고·요금 조회 (숙소 코드 목록을 받는다) ─────────────

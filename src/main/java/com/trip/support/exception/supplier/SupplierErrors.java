@@ -1,4 +1,4 @@
-package com.trip.supplier.exception;
+package com.trip.support.exception.supplier;
 
 import com.trip.supplier.Supplier;
 import io.netty.channel.ConnectTimeoutException;

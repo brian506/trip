@@ -37,14 +37,23 @@ supplier:
       base-url: http://localhost:9090
       api-key: dev-key-b
   connect-timeout: 1s
-  # 묶음을 순차로 부르므로 (연결 + 응답 x 묶음 수)가 검색 예산 5초 안에 들어가야 한다.
   response-timeout: 2s
-  # 커넥션 풀은 공급사마다 따로 둔다. 크기는 곧 동시에 처리할 검색 요청 수다.
   max-connections: 50
   pending-acquire-timeout: 200ms
   max-idle-time: 30s
-  # 검색 한 건이 공급사 호출에 쓸 수 있는 전체 시간. 넘긴 공급사는 취소되고 failures[]에 BUDGET_EXCEEDED로 담긴다.
-  search-budget: 5s
+  total-timeout: 5s
+
+  circuit-breaker:
+    sliding-window-size: 20
+    minimum-number-of-calls: 10
+    failure-rate-threshold: 50
+    wait-duration-in-open-state: 10s
+    permitted-number-of-calls-in-half-open-state: 3
+
+  retry:
+    max-attempts: 3
+    wait-duration: 2s
+    backoff-multiplier: 3
 
 stay:
   sync:
